@@ -1,0 +1,4 @@
+.wrap { height: 100vh; display:flex; align-items:center; justify-content:center; background: linear-gradient(180deg, #f6fbff, #ffffff); }
+.card { width: 420px; border-radius: 18px; }
+.form { display:flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.error { color: #b00020; font-size: 13px; }

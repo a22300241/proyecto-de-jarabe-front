@@ -1,0 +1,49 @@
+.layout {
+  height: 100vh;
+}
+
+.sidenav {
+  width: 260px;
+  padding: 12px;
+  background: #f3f4f8;
+}
+
+.brand {
+  padding: 14px 12px;
+  border-radius: 14px;
+  background: #e9eaf5;
+  margin-bottom: 10px;
+
+  .brandTitle {
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .brandSub {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.who {
+  text-align: right;
+  margin-right: 12px;
+
+  .name { font-weight: 700; }
+  .role { font-size: 12px; opacity: 0.7; }
+}
+
+.page {
+  padding: 18px;
+}
