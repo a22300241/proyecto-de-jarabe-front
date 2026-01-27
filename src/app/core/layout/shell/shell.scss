@@ -3,45 +3,67 @@
 }
 
 .sidenav {
-  width: 260px;
-  padding: 12px;
-  background: #f3f4f8;
+  width: 280px;
+  padding: 16px 12px;
+  border-right: 0;
+  background: #f4f5f9;
 }
 
 .brand {
-  padding: 14px 12px;
-  border-radius: 14px;
-  background: #e9eaf5;
-  margin-bottom: 10px;
+  padding: 14px 14px 10px;
+  border-radius: 16px;
+  background: #eef0f7;
+  margin-bottom: 12px;
+}
 
-  .brandTitle {
-    font-weight: 700;
-    font-size: 18px;
-  }
-  .brandSub {
-    font-size: 12px;
-    opacity: 0.7;
-  }
+.brandTitle {
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.brandSub {
+  margin-top: 2px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.div {
+  margin: 14px 0;
+}
+
+.content {
+  background: #fafafe;
 }
 
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: white;
-  border-bottom: 1px solid rgba(0,0,0,.06);
+  height: 72px;
+  display: flex;
+  gap: 12px;
+  padding: 0 18px;
 }
 
 .spacer {
   flex: 1;
 }
 
-.who {
+.userBox {
   text-align: right;
-  margin-right: 12px;
+  margin-right: 10px;
+}
 
-  .name { font-weight: 700; }
-  .role { font-size: 12px; opacity: 0.7; }
+.userName {
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 22px;
+}
+
+.userRole {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.logoutBtn {
+  border-radius: 999px;
 }
 
 .page {

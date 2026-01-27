@@ -6,8 +6,13 @@ export const AuthGuard: CanActivateFn = () => {
   const session = inject(SessionStore);
   const router = inject(Router);
 
-  if (session.isLoggedIn()) return true;
+  // ✅ si tu store es signal: user()
+  const isLogged = !!session.user();
 
-  router.navigateByUrl('/login');
-  return false;
+  if (!isLogged) {
+    router.navigateByUrl('/login');
+    return false;
+  }
+
+  return true;
 };

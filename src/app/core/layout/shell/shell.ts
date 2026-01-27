@@ -1,6 +1,6 @@
-import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { Component, computed, inject } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';
 
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -37,7 +37,7 @@ export class ShellComponent {
   role = computed(() => this.session.user()?.role ?? '—');
 
   logout() {
-    this.session.logout();
-    this.router.navigateByUrl('/login');
+    this.session.logout();         // limpia tokens/user
+    this.router.navigateByUrl('/login'); // ✅ te saca de /app
   }
 }

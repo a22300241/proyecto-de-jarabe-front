@@ -1,7 +1,7 @@
 import { Injectable, computed, inject } from '@angular/core';
-import { SessionStore, Role as AppRole } from '../state/session.store';
+import { SessionStore } from '../state/session.store';
 
-export type Role = AppRole;
+export type Role = 'OWNER' | 'PARTNER' | 'FRANCHISE_OWNER' | 'SELLER';
 
 export type Permission =
   // Products
@@ -9,12 +9,15 @@ export type Permission =
   | 'products.create'
   | 'products.edit'
   | 'products.toggleActive'
+
   // Sales
   | 'sales.view'
   | 'sales.create'
+
   // Reports
   | 'reports.view'
   | 'reports.admin'
+
   // Users / Franchises
   | 'users.view'
   | 'users.create.partner'
@@ -23,6 +26,7 @@ export type Permission =
   | 'users.edit'
   | 'franchises.view'
   | 'franchises.manage'
+
   // Chat
   | 'chat.view'
   | 'chat.admin';
@@ -31,7 +35,8 @@ export type Permission =
 export class PermissionsService {
   private session = inject(SessionStore);
 
-  role = computed<Role | null>(() => this.session.user()?.role ?? null);
+  // ✅ OJO: si tu SessionStore usa signals (user()), aquí lo llamamos:
+  role = computed(() => (this.session.user()?.role ?? null) as Role | null);
 
   is(role: Role) {
     return this.role() === role;
@@ -49,7 +54,7 @@ export class PermissionsService {
     // OWNER / PARTNER: todo
     if (role === 'OWNER' || role === 'PARTNER') return true;
 
-    // FRANCHISE_OWNER: administra su franquicia
+    // FRANCHISE_OWNER: administra SU franquicia
     if (role === 'FRANCHISE_OWNER') {
       return (
         p === 'products.view' ||
@@ -66,13 +71,13 @@ export class PermissionsService {
       );
     }
 
-    // SELLER: lectura + crear ventas (NO productos, NO users, NO franquicias, NO chat)
+    // SELLER: lectura + crear ventas + chat (SIN reportes)
     if (role === 'SELLER') {
       return (
         p === 'products.view' ||
         p === 'sales.view' ||
         p === 'sales.create' ||
-        p === 'reports.view'
+        p === 'chat.view'
       );
     }
 

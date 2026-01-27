@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environments';
+import { SessionStore } from '../state/session.store';
 
 export interface ProductItem {
   id: string;
@@ -15,7 +14,7 @@ export interface ProductItem {
   createdAt: string;
 }
 
-export interface ProductsPage {
+export interface ProductsResponse {
   page: number;
   pageSize: number;
   total: number;
@@ -25,14 +24,28 @@ export interface ProductsPage {
 @Injectable({ providedIn: 'root' })
 export class ProductsService {
   private http = inject(HttpClient);
+  private session = inject(SessionStore);
 
-  list(page = 1, pageSize = 20): Observable<ProductsPage> {
-    const params = new HttpParams()
-      .set('page', String(page))
-      .set('pageSize', String(pageSize));
+  // Ajusta si tu env usa otro nombre:
+  private baseUrl = 'http://localhost:3000'; // <-- si ya tienes environment, úsalo
 
-    return this.http.get<ProductsPage>(`${environment.apiUrl}/products`, { params });
+  list(page: number, pageSize: number, franchiseId?: string) {
+    const user = this.session.user();
+    const role = user?.role;
+
+    const effectiveFranchiseId =
+      (role === 'OWNER' || role === 'PARTNER')
+        ? (franchiseId ?? '')
+        : (user?.franchiseId ?? '');
+
+    let params = new HttpParams()
+      .set('page', page)
+      .set('pageSize', pageSize);
+
+    if (effectiveFranchiseId) {
+      params = params.set('franchiseId', effectiveFranchiseId);
+    }
+
+    return this.http.get<ProductsResponse>(`${this.baseUrl}/products`, { params });
   }
-
-  // Luego agregamos create/edit/toggle cuando toques botones.
 }

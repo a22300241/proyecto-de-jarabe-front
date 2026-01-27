@@ -6,7 +6,7 @@
     </div>
 
     <mat-nav-list>
-      <a mat-list-item routerLink="/app" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+      <a mat-list-item routerLink="/app" routerLinkActive="active">
         <mat-icon matListItemIcon>dashboard</mat-icon>
         <span matListItemTitle>Dashboard</span>
       </a>
@@ -21,18 +21,21 @@
         <span matListItemTitle>Ventas</span>
       </a>
 
+      <!-- ✅ SELLER NO ve reportes -->
       <a mat-list-item routerLink="/app/reports/summary" routerLinkActive="active" *ngIf="perm.can('reports.view')">
         <mat-icon matListItemIcon>bar_chart</mat-icon>
         <span matListItemTitle>Reportes</span>
       </a>
 
+      <!-- ✅ SELLER SÍ ve chat -->
       <a mat-list-item routerLink="/app/chat" routerLinkActive="active" *ngIf="perm.can('chat.view')">
         <mat-icon matListItemIcon>chat</mat-icon>
         <span matListItemTitle>Chat</span>
       </a>
 
-      <mat-divider></mat-divider>
+      <mat-divider class="div"></mat-divider>
 
+      <!-- Solo OWNER/PARTNER -->
       <a mat-list-item routerLink="/app/users" routerLinkActive="active" *ngIf="perm.can('users.view') && perm.isAny('OWNER','PARTNER')">
         <mat-icon matListItemIcon>group</mat-icon>
         <span matListItemTitle>Usuarios</span>
@@ -43,6 +46,7 @@
         <span matListItemTitle>Franquicias</span>
       </a>
 
+      <!-- FRANCHISE_OWNER -->
       <a mat-list-item routerLink="/app/my-sellers" routerLinkActive="active" *ngIf="perm.is('FRANCHISE_OWNER')">
         <mat-icon matListItemIcon>badge</mat-icon>
         <span matListItemTitle>Mis vendedores</span>
@@ -51,15 +55,15 @@
   </mat-sidenav>
 
   <mat-sidenav-content class="content">
-    <mat-toolbar class="topbar">
+    <mat-toolbar class="topbar" color="transparent">
       <span class="spacer"></span>
 
-      <div class="who">
-        <div class="name">{{ userName() }}</div>
-        <div class="role">{{ role() }}</div>
+      <div class="userBox">
+        <div class="userName">{{ userName() }}</div>
+        <div class="userRole">{{ role() }}</div>
       </div>
 
-      <button mat-stroked-button (click)="logout()">Salir</button>
+      <button mat-stroked-button class="logoutBtn" (click)="logout()">Salir</button>
     </mat-toolbar>
 
     <div class="page">
