@@ -9,15 +9,12 @@ export type Permission =
   | 'products.create'
   | 'products.edit'
   | 'products.toggleActive'
-
   // Sales
   | 'sales.view'
   | 'sales.create'
-
   // Reports
   | 'reports.view'
   | 'reports.admin'
-
   // Users / Franchises
   | 'users.view'
   | 'users.create.partner'
@@ -26,7 +23,6 @@ export type Permission =
   | 'users.edit'
   | 'franchises.view'
   | 'franchises.manage'
-
   // Chat
   | 'chat.view'
   | 'chat.admin';
@@ -35,7 +31,7 @@ export type Permission =
 export class PermissionsService {
   private session = inject(SessionStore);
 
-  // ✅ OJO: si tu SessionStore usa signals (user()), aquí lo llamamos:
+  // ✅ OJO: session.user() es SIGNAL → hay que EJECUTARLO
   role = computed(() => (this.session.user()?.role ?? null) as Role | null);
 
   is(role: Role) {
@@ -47,14 +43,15 @@ export class PermissionsService {
     return !!r && roles.includes(r);
   }
 
+  // ✅ Permisos únicos
   can(p: Permission): boolean {
     const role = this.role();
     if (!role) return false;
 
-    // OWNER / PARTNER: todo
+    // OWNER/PARTNER: todo
     if (role === 'OWNER' || role === 'PARTNER') return true;
 
-    // FRANCHISE_OWNER: administra SU franquicia
+    // FRANCHISE_OWNER: administra su franquicia
     if (role === 'FRANCHISE_OWNER') {
       return (
         p === 'products.view' ||
@@ -71,7 +68,7 @@ export class PermissionsService {
       );
     }
 
-    // SELLER: lectura + crear ventas + chat (SIN reportes)
+    // SELLER: lectura + crear ventas + chat (PERO SIN reportes)
     if (role === 'SELLER') {
       return (
         p === 'products.view' ||
@@ -82,5 +79,22 @@ export class PermissionsService {
     }
 
     return false;
+  }
+
+  // ✅ Helpers para el MENÚ
+  showReportsMenu(): boolean {
+    return this.isAny('OWNER', 'PARTNER', 'FRANCHISE_OWNER');
+  }
+
+  showUsersMenu(): boolean {
+    return this.isAny('OWNER', 'PARTNER', 'FRANCHISE_OWNER');
+  }
+
+  showFranchisesMenu(): boolean {
+    return this.isAny('OWNER', 'PARTNER');
+  }
+
+  showChatMenu(): boolean {
+    return this.can('chat.view');
   }
 }

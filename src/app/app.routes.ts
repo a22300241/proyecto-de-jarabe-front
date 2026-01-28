@@ -1,75 +1,85 @@
 import { Routes } from '@angular/router';
-import { AuthGuard } from './core/guards/auth-guard';
-import { RoleGuard } from './core/guards/role-guard';
-
-import { ShellComponent } from './core/layout/shell/shell';
-
-import { LoginComponent } from './features/auth/login/login';
-import { Dashboard } from './features/dashboard/dashboard';
-
-import { ProductsList } from './features/products/products-list/products-list';
-
-import { SalesList } from './features/sales/sales-list/sales-list';
-import { SaleCreate } from './features/sales/sale-create/sale-create';
-
-import { ReportSummary } from './features/reports/report-summary/report-summary';
-import { DailyClose } from './features/reports/daily-close/daily-close';
-
-import { UsersList } from './features/users/users-list/users-list';
-import { FranchisesList } from './features/franchises/franchises-list/franchises-list';
-
-import { ChatPage } from './features/chat/chat-page/chat-page';
+import { authGuard } from './core/guards/auth-guard';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'app' },
-  { path: 'login', component: LoginComponent },
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./features/auth/login/login').then((m) => m.LoginComponent),
+  },
 
   {
     path: 'app',
-    component: ShellComponent,
-    canActivate: [AuthGuard],
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./core/layout/shell/shell').then((m) => m.ShellComponent),
     children: [
-      { path: '', component: Dashboard },
-
-      // Productos (todos los roles pueden ver)
-      { path: 'products', component: ProductsList },
-
-      // Ventas
-      { path: 'sales', component: SalesList },
-      { path: 'sales/new', component: SaleCreate }, // ✅ SELLER también entra
-
-      // Reportes: ✅ SOLO OWNER/PARTNER/FRANCHISE_OWNER (SELLER no)
       {
-        path: 'reports/summary',
-        component: ReportSummary,
-        canActivate: [RoleGuard],
-        data: { roles: ['OWNER', 'PARTNER', 'FRANCHISE_OWNER'] },
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./features/dashboard/dashboard').then((m) => m.Dashboard),
+      },
+      {
+        path: 'products',
+        loadComponent: () =>
+          import('./features/products/products-list/products-list').then(
+            (m) => m.ProductsList
+          ),
+      },
+      {
+        path: 'sales',
+        loadComponent: () =>
+          import('./features/sales/sales-list/sales-list').then((m) => m.SalesList),
       },
 
-      // Reporte administrativo
+      // ✅ FRANQUICIAS (ruta que tu menú usa)
       {
-        path: 'reports/daily-close',
-        component: DailyClose,
-        canActivate: [RoleGuard],
-        data: { roles: ['OWNER', 'PARTNER', 'FRANCHISE_OWNER'] },
+        path: 'franchises',
+        loadComponent: () =>
+          import('./features/franchises/franchises-list/franchises-list').then(
+            (m) => m.FranchisesList
+          ),
       },
 
-      // Chat: ✅ ahora incluye SELLER
+      // ✅ REPORTES
+      {
+        path: 'reports',
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () =>
+              import('./features/reports/report-summary/report-summary').then(
+                (m) => m.ReportSummary
+              ),
+          },
+          {
+            path: 'daily-close',
+            loadComponent: () =>
+              import('./features/reports/daily-close/daily-close').then(
+                (m) => m.DailyClose
+              ),
+          },
+        ],
+      },
+
+      // ✅ USUARIOS
+      {
+        path: 'users',
+        loadComponent: () =>
+          import('./features/users/users-list/users-list').then((m) => m.UsersList),
+      },
+
       {
         path: 'chat',
-        component: ChatPage,
-        canActivate: [RoleGuard],
-        data: { roles: ['OWNER', 'PARTNER', 'FRANCHISE_OWNER', 'SELLER'] },
+        loadComponent: () =>
+          import('./features/chat/chat-page/chat-page').then((m) => m.ChatPage),
       },
 
-      // Usuarios y franquicias globales solo OWNER/PARTNER
-      { path: 'users', component: UsersList, canActivate: [RoleGuard], data: { roles: ['OWNER', 'PARTNER'] } },
-      { path: 'franchises', component: FranchisesList, canActivate: [RoleGuard], data: { roles: ['OWNER', 'PARTNER'] } },
-
-      // Mis vendedores (FRANCHISE_OWNER)
-      { path: 'my-sellers', component: UsersList, canActivate: [RoleGuard], data: { roles: ['FRANCHISE_OWNER'] } },
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
     ],
   },
 
-  { path: '**', redirectTo: 'app' },
+  { path: '', pathMatch: 'full', redirectTo: 'login' },
+  { path: '**', redirectTo: 'login' },
 ];

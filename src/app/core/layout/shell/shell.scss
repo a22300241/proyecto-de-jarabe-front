@@ -1,71 +1,54 @@
 .layout {
-  height: 100vh;
+  height: 100vh;          // ✅ fijo
+  width: 100%;
 }
 
 .sidenav {
-  width: 280px;
-  padding: 16px 12px;
-  border-right: 0;
-  background: #f4f5f9;
+  width: 260px;
+  padding: 14px;
+  box-sizing: border-box;
 }
 
 .brand {
-  padding: 14px 14px 10px;
+  padding: 10px 8px 14px 8px;
   border-radius: 16px;
-  background: #eef0f7;
+  background: #f1f3f8;
   margin-bottom: 12px;
 }
+.brand-title { font-weight: 800; font-size: 18px; }
+.brand-sub { opacity: .7; }
 
-.brandTitle {
-  font-weight: 800;
-  font-size: 18px;
-}
-
-.brandSub {
-  margin-top: 2px;
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.div {
-  margin: 14px 0;
+.divider {
+  height: 1px;
+  background: #e7e7e7;
+  margin: 12px 8px;
 }
 
 .content {
-  background: #fafafe;
+  height: 100vh;          // ✅ fijo
+  overflow: hidden;       // ✅ evita que la barra se “mueva”
+  display: flex;
+  flex-direction: column;
 }
 
 .topbar {
   height: 72px;
+  padding: 12px 18px;
   display: flex;
-  gap: 12px;
-  padding: 0 18px;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
 }
 
-.spacer {
-  flex: 1;
-}
+.spacer { flex: 1; }
 
-.userBox {
-  text-align: right;
-  margin-right: 10px;
-}
-
-.userName {
-  font-weight: 800;
-  font-size: 22px;
-  line-height: 22px;
-}
-
-.userRole {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.logoutBtn {
-  border-radius: 999px;
-}
+.who { text-align: right; line-height: 1.1; }
+.name { font-size: 28px; font-weight: 800; }
+.role { opacity: .7; font-weight: 600; }
 
 .page {
+  flex: 1;
+  overflow: auto;         // ✅ solo el contenido scrollea
   padding: 18px;
+  box-sizing: border-box;
 }

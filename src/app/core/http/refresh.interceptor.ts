@@ -1,19 +1,40 @@
-import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { Observable, throwError, switchMap, catchError } from 'rxjs';
+import { catchError, from, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
-export const refreshInterceptor: HttpInterceptorFn = (req: HttpRequest<any>, next: HttpHandlerFn): Observable<HttpEvent<any>> => {
+let refreshing = false;
+
+export const refreshInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
 
   return next(req).pipe(
-    catchError((err: unknown) => {
-      if (err instanceof HttpErrorResponse && err.status === 401) {
-        return auth.refreshTokens().pipe(
-          switchMap(() => next(req))
-        );
+    catchError((err: HttpErrorResponse) => {
+      // ✅ Solo refrescar en 401 (NO en 403)
+      if (err.status !== 401) return throwError(() => err);
+
+      // ✅ Evitar bucles
+      if (req.url.includes('/auth/refresh') || req.url.includes('/auth/login')) {
+        return throwError(() => err);
       }
-      return throwError(() => err);
+
+      // ✅ Evitar doble refresh simultáneo
+      if (refreshing) return throwError(() => err);
+
+      refreshing = true;
+
+      return from(auth.refreshTokens()).pipe(
+        switchMap(() => {
+          refreshing = false;
+          // ✅ Reintenta la request (auth.interceptor pondrá el token)
+          return next(req);
+        }),
+        catchError((e) => {
+          refreshing = false;
+          auth.logout();
+          return throwError(() => e);
+        })
+      );
     })
   );
 };

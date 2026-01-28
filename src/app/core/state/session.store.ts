@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 
 export type Role = 'OWNER' | 'PARTNER' | 'FRANCHISE_OWNER' | 'SELLER';
 
@@ -6,66 +6,94 @@ export interface SessionUser {
   userId: string;
   name: string;
   role: Role;
-  franchiseId: string | null; // null para OWNER/PARTNER global
+  franchiseId: string | null; // null o 'GLOBAL' para owner/partner
 }
 
-const LS_USER = 'pos.session.user';
-const LS_ACCESS = 'pos.session.accessToken';
-const LS_REFRESH = 'pos.session.refreshToken';
+export interface SessionTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+const LS_USER_KEY = 'posjarabe.session.user';
+const LS_TOKENS_KEY = 'posjarabe.session.tokens';
 
 @Injectable({ providedIn: 'root' })
 export class SessionStore {
-  // Signals
-  user = signal<SessionUser | null>(null);
-  accessToken = signal<string | null>(null);
-  refreshToken = signal<string | null>(null);
+  private _user = signal<SessionUser | null>(null);
+  private _tokens = signal<SessionTokens | null>(null);
+
+  // ✅ Signals (se leen como función)
+  user = computed(() => this._user());
+  tokens = computed(() => this._tokens());
+
+  accessToken = computed(() => this._tokens()?.accessToken ?? null);
+  refreshToken = computed(() => this._tokens()?.refreshToken ?? null);
+
+  isLoggedIn = computed(() => !!this._user() && !!this._tokens()?.accessToken);
 
   constructor() {
-    // Hydrate desde localStorage
-    try {
-      const u = localStorage.getItem(LS_USER);
-      const a = localStorage.getItem(LS_ACCESS);
-      const r = localStorage.getItem(LS_REFRESH);
-
-      if (u) this.user.set(JSON.parse(u));
-      if (a) this.accessToken.set(a);
-      if (r) this.refreshToken.set(r);
-    } catch {
-      this.clear();
-    }
+    this.hydrateFromStorage();
   }
 
-  isLoggedIn(): boolean {
-    return !!this.accessToken();
+  setSession(user: SessionUser, tokens: SessionTokens) {
+    this._user.set(user);
+    this._tokens.set(tokens);
+    this.persistToStorage();
   }
 
-  setSession(payload: { user: SessionUser; accessToken: string; refreshToken: string }) {
-    this.user.set(payload.user);
-    this.accessToken.set(payload.accessToken);
-    this.refreshToken.set(payload.refreshToken);
-
-    localStorage.setItem(LS_USER, JSON.stringify(payload.user));
-    localStorage.setItem(LS_ACCESS, payload.accessToken);
-    localStorage.setItem(LS_REFRESH, payload.refreshToken);
-  }
-
-  patchTokens(accessToken: string, refreshToken: string) {
-    this.accessToken.set(accessToken);
-    this.refreshToken.set(refreshToken);
-    localStorage.setItem(LS_ACCESS, accessToken);
-    localStorage.setItem(LS_REFRESH, refreshToken);
+  patchTokens(tokens: SessionTokens) {
+    this._tokens.set(tokens);
+    this.persistToStorage();
   }
 
   clear() {
-    this.user.set(null);
-    this.accessToken.set(null);
-    this.refreshToken.set(null);
-    localStorage.removeItem(LS_USER);
-    localStorage.removeItem(LS_ACCESS);
-    localStorage.removeItem(LS_REFRESH);
+    this._user.set(null);
+    this._tokens.set(null);
+    this.clearStorage();
   }
 
-  logout() {
-    this.clear();
+  // =========================
+  // Storage helpers
+  // =========================
+  private hydrateFromStorage() {
+    try {
+      const rawUser = localStorage.getItem(LS_USER_KEY);
+      const rawTokens = localStorage.getItem(LS_TOKENS_KEY);
+
+      if (!rawUser || !rawTokens) return;
+
+      const user = JSON.parse(rawUser) as SessionUser;
+      const tokens = JSON.parse(rawTokens) as SessionTokens;
+
+      // Validación mínima
+      if (!user?.userId || !tokens?.accessToken || !tokens?.refreshToken) return;
+
+      this._user.set(user);
+      this._tokens.set(tokens);
+    } catch {
+      // Si algo está corrupto, limpiamos
+      this.clearStorage();
+    }
+  }
+
+  private persistToStorage() {
+    try {
+      const u = this._user();
+      const t = this._tokens();
+
+      if (!u || !t) return;
+
+      localStorage.setItem(LS_USER_KEY, JSON.stringify(u));
+      localStorage.setItem(LS_TOKENS_KEY, JSON.stringify(t));
+    } catch {
+      // si localStorage falla, no reventamos
+    }
+  }
+
+  private clearStorage() {
+    try {
+      localStorage.removeItem(LS_USER_KEY);
+      localStorage.removeItem(LS_TOKENS_KEY);
+    } catch {}
   }
 }

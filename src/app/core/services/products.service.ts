@@ -1,51 +1,48 @@
-import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { SessionStore } from '../state/session.store';
+import { inject, Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 export interface ProductItem {
   id: string;
-  franchiseId: string;
-  isActive: boolean;
   name: string;
-  sku: string | null;
+  sku?: string | null;
   price: number;
   stock: number;
   missing: number;
+  isActive: boolean;
   createdAt: string;
-}
-
-export interface ProductsResponse {
-  page: number;
-  pageSize: number;
-  total: number;
-  items: ProductItem[];
 }
 
 @Injectable({ providedIn: 'root' })
 export class ProductsService {
   private http = inject(HttpClient);
-  private session = inject(SessionStore);
 
-  // Ajusta si tu env usa otro nombre:
-  private baseUrl = 'http://localhost:3000'; // <-- si ya tienes environment, úsalo
+  // ⚠️ AJUSTA esta URL si tu backend es otro (ej: http://localhost:3000)
+  private baseUrl = 'http://localhost:3000';
 
-  list(page: number, pageSize: number, franchiseId?: string) {
-    const user = this.session.user();
-    const role = user?.role;
+  /**
+   * Lista productos por franquicia (si franchiseId viene null, backend decide qué hacer)
+   * Ajusta el endpoint si el tuyo es diferente.
+   */
+  async list(params: { franchiseId: string | null }): Promise<ProductItem[]> {
+    const q: any = {};
+    if (params.franchiseId) q.franchiseId = params.franchiseId;
 
-    const effectiveFranchiseId =
-      (role === 'OWNER' || role === 'PARTNER')
-        ? (franchiseId ?? '')
-        : (user?.franchiseId ?? '');
+    return await firstValueFrom(
+      this.http.get<ProductItem[]>(`${this.baseUrl}/products`, { params: q })
+    );
+  }
 
-    let params = new HttpParams()
-      .set('page', page)
-      .set('pageSize', pageSize);
+  /**
+   * 🔎 Buscar por texto (nombre/sku)
+   * Si tu backend usa otro endpoint, cámbialo aquí.
+   */
+  async search(params: { q: string; franchiseId: string | null }): Promise<ProductItem[]> {
+    const q: any = { q: params.q };
+    if (params.franchiseId) q.franchiseId = params.franchiseId;
 
-    if (effectiveFranchiseId) {
-      params = params.set('franchiseId', effectiveFranchiseId);
-    }
-
-    return this.http.get<ProductsResponse>(`${this.baseUrl}/products`, { params });
+    return await firstValueFrom(
+      this.http.get<ProductItem[]>(`${this.baseUrl}/products/search`, { params: q })
+    );
   }
 }

@@ -1,16 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { tap, map } from 'rxjs/operators';
-import { Observable } from 'rxjs';
-
-import { SessionStore, SessionUser } from '../state/session.store';
-import { environment } from '../../../environments/environments';
-
+import { firstValueFrom } from 'rxjs';
+import { SessionStore, SessionTokens, SessionUser } from '../state/session.store';
 
 type LoginResponse = {
+  user: { id: string; name: string; role: any; franchiseId: string | null };
   accessToken: string;
   refreshToken: string;
-  user: SessionUser;
 };
 
 type RefreshResponse = {
@@ -21,30 +17,55 @@ type RefreshResponse = {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private http = inject(HttpClient);
-  private session = inject(SessionStore);
+  public session = inject(SessionStore);
 
-  login(email: string, password: string): Observable<void> {
-    return this.http
-      .post<LoginResponse>(`${environment.apiUrl}/auth/login`, { email, password })
-      .pipe(
-        tap((res) => this.session.setSession(res)),
-        map(() => void 0)
-      );
+  private baseUrl = 'http://localhost:3000';
+
+  async login(email: string, password: string): Promise<void> {
+    const res = await firstValueFrom(
+      this.http.post<LoginResponse>(`${this.baseUrl}/auth/login`, { email, password })
+    );
+
+    const tokens: SessionTokens = {
+      accessToken: res.accessToken,
+      refreshToken: res.refreshToken,
+    };
+
+    // ✅ Mapeo a tu SessionUser real (userId)
+    const user: SessionUser = {
+      userId: res.user.id,
+      name: res.user.name,
+      role: res.user.role,
+      franchiseId: res.user.franchiseId ?? null,
+    };
+
+    this.session.setSession(user, tokens);
   }
 
-  refreshTokens(): Observable<void> {
-    const rt = this.session.refreshToken();
-    if (!rt) throw new Error('No refresh token');
+  async refreshTokens(): Promise<void> {
+    const user = this.session.user();       // ✅ Signal
+    const tokens = this.session.tokens();   // ✅ Signal
 
-    return this.http
-      .post<RefreshResponse>(`${environment.apiUrl}/auth/refresh`, { refreshToken: rt })
-      .pipe(
-        tap((res) => this.session.patchTokens(res.accessToken, res.refreshToken)),
-        map(() => void 0)
-      );
+    const refreshToken = tokens?.refreshToken;
+
+    if (!user || !refreshToken) {
+      this.logout();
+      throw new Error('No session/refresh token');
+    }
+
+    const res = await firstValueFrom(
+      this.http.post<RefreshResponse>(`${this.baseUrl}/auth/refresh`, { refreshToken })
+    );
+
+    const newTokens: SessionTokens = {
+      accessToken: res.accessToken,
+      refreshToken: res.refreshToken,
+    };
+
+    this.session.setSession(user, newTokens);
   }
 
-  logout() {
-    this.session.logout();
+  logout(): void {
+    this.session.clear();
   }
 }

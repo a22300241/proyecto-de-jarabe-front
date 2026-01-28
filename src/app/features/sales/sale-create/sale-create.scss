@@ -1,0 +1,11 @@
+.card { padding: 14px; }
+.header { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.title { font-size: 28px; font-weight: 700; }
+.subtitle { opacity: .7; }
+.actions { display:flex; gap:10px; }
+.content { margin-top: 14px; }
+.search { width: 420px; max-width: 100%; }
+.tableWrap { margin-top: 12px; overflow:auto; }
+.footer { margin-top: 14px; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.total { font-size: 18px; font-weight: 600; }
+.error { padding: 12px; border-radius: 10px; background: #ffecec; color:#9d1c1c; margin-bottom: 12px; }

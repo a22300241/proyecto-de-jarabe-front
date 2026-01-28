@@ -1,65 +1,51 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormControl, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule, // ✅ necesario para formGroup
-    MatCardModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-  ],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './login.html',
   styleUrls: ['./login.scss'],
 })
 export class LoginComponent {
-  private auth = inject(AuthService);
+  public auth = inject(AuthService);
   private router = inject(Router);
-  private fb = inject(FormBuilder);
 
-  // ✅ lo que tu HTML espera
-  loading = false;
-  error = '';
+  public loading = false;
+  public error: string | null = null;
 
-  form = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required]],
+  public form = new FormGroup({
+    email: new FormControl<string>('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+    password: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
   });
 
-  submit() {
-    this.error = '';
+  public async submit(): Promise<void> {
+    this.error = null;
 
     if (this.form.invalid) {
-      this.error = 'Completa correo y contraseña correctamente.';
       this.form.markAllAsTouched();
+      this.error = 'Completa correo y contraseña.';
       return;
     }
 
-    const email = this.form.value.email!;
-    const password = this.form.value.password!;
+    const { email, password } = this.form.getRawValue();
 
     this.loading = true;
-    this.auth.login(email, password).subscribe({
-      next: () => {
-        this.loading = false;
-        this.router.navigateByUrl('/app');
-      },
-      error: (e: unknown) => {
-        this.loading = false;
-        this.error = e instanceof Error ? e.message : 'Error al iniciar sesión';
-      },
-    });
+    try {
+      await this.auth.login(email, password);
+      await this.router.navigateByUrl('/app/dashboard'); // ✅ tu zona privada
+    } catch (e: any) {
+      // ✅ error visible (ya no “no hace nada”)
+      this.error =
+        e?.error?.message ||
+        e?.message ||
+        'No se pudo iniciar sesión. Revisa tus credenciales o el servidor.';
+    } finally {
+      this.loading = false;
+    }
   }
 }

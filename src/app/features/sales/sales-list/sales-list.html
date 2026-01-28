@@ -1,4 +1,69 @@
-<button mat-stroked-button *ngIf="perm.can('sales.create')" routerLink="/app/sales/new">
-  <mat-icon>add</mat-icon>
-  Nueva venta
-</button>
+<mat-card class="card">
+  <div class="header">
+    <div>
+      <div class="title">Ventas</div>
+      <div class="subtitle">Listado</div>
+    </div>
+
+    <div class="actions">
+      <button
+        mat-stroked-button
+        *ngIf="perm.can('sales.create')"
+        routerLink="/app/sales/new"
+      >
+        <mat-icon>add</mat-icon>
+        Nueva venta
+      </button>
+
+      <button mat-stroked-button (click)="load()">
+        <mat-icon>refresh</mat-icon>
+        Recargar
+      </button>
+    </div>
+  </div>
+
+  <div class="content" *ngIf="!loading(); else loadingTpl">
+    <div class="error" *ngIf="error() as err">{{ err }}</div>
+
+    <div class="tableWrap" *ngIf="!error()">
+      <table mat-table [dataSource]="dataSource" class="table">
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef>Fecha</th>
+          <td mat-cell *matCellDef="let s">{{ s.createdAt | date:'short' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="seller">
+          <th mat-header-cell *matHeaderCellDef>Vendedor</th>
+          <td mat-cell *matCellDef="let s">{{ s.sellerName ?? '—' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="salesCount">
+          <th mat-header-cell *matHeaderCellDef>#</th>
+          <td mat-cell *matCellDef="let s">{{ s.salesCount }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="totalSold">
+          <th mat-header-cell *matHeaderCellDef>Total</th>
+          <td mat-cell *matCellDef="let s">{{ s.totalSold }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns()"></tr>
+      </table>
+
+      <mat-paginator
+        [length]="total()"
+        [pageSize]="20"
+        [pageSizeOptions]="[10,20,50,100]"
+        (page)="pageChanged($event)">
+      </mat-paginator>
+    </div>
+  </div>
+
+  <ng-template #loadingTpl>
+    <div class="loading">
+      <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
+      <div class="muted">Cargando ventas…</div>
+    </div>
+  </ng-template>
+</mat-card>

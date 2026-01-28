@@ -1,8 +1,8 @@
 <mat-sidenav-container class="layout">
-  <mat-sidenav mode="side" opened class="sidenav">
+  <mat-sidenav class="sidenav" mode="side" opened>
     <div class="brand">
-      <div class="brandTitle">POS Jarabe</div>
-      <div class="brandSub">Minimal</div>
+      <div class="brand-title">POS Jarabe</div>
+      <div class="brand-sub">Minimal</div>
     </div>
 
     <mat-nav-list>
@@ -11,60 +11,55 @@
         <span matListItemTitle>Dashboard</span>
       </a>
 
-      <a mat-list-item routerLink="/app/products" routerLinkActive="active" *ngIf="perm.can('products.view')">
+      <a mat-list-item routerLink="/app/products" routerLinkActive="active">
         <mat-icon matListItemIcon>inventory_2</mat-icon>
         <span matListItemTitle>Productos</span>
       </a>
 
-      <a mat-list-item routerLink="/app/sales" routerLinkActive="active" *ngIf="perm.can('sales.view')">
+      <a mat-list-item routerLink="/app/sales" routerLinkActive="active">
         <mat-icon matListItemIcon>point_of_sale</mat-icon>
         <span matListItemTitle>Ventas</span>
       </a>
 
-      <!-- ✅ SELLER NO ve reportes -->
-      <a mat-list-item routerLink="/app/reports/summary" routerLinkActive="active" *ngIf="perm.can('reports.view')">
+      <!-- ✅ SELLER: NO Reportes (como pediste) -->
+       <a mat-list-item routerLink="/app/reports" routerLinkActive="active" *ngIf="perm.can('reports.view')">
         <mat-icon matListItemIcon>bar_chart</mat-icon>
         <span matListItemTitle>Reportes</span>
       </a>
 
-      <!-- ✅ SELLER SÍ ve chat -->
+      <!-- ✅ Chat para SELLER también -->
       <a mat-list-item routerLink="/app/chat" routerLinkActive="active" *ngIf="perm.can('chat.view')">
         <mat-icon matListItemIcon>chat</mat-icon>
         <span matListItemTitle>Chat</span>
       </a>
 
-      <mat-divider class="div"></mat-divider>
+      <div class="divider" *ngIf="perm.can('users.view') || perm.can('franchises.view')"></div>
 
-      <!-- Solo OWNER/PARTNER -->
-      <a mat-list-item routerLink="/app/users" routerLinkActive="active" *ngIf="perm.can('users.view') && perm.isAny('OWNER','PARTNER')">
+      <a mat-list-item routerLink="/app/users" routerLinkActive="active" *ngIf="perm.can('users.view')">
         <mat-icon matListItemIcon>group</mat-icon>
         <span matListItemTitle>Usuarios</span>
       </a>
 
-      <a mat-list-item routerLink="/app/franchises" routerLinkActive="active" *ngIf="perm.can('franchises.view') && perm.isAny('OWNER','PARTNER')">
+      <a mat-list-item routerLink="/app/franchises" routerLinkActive="active" *ngIf="perm.can('franchises.view')">
         <mat-icon matListItemIcon>store</mat-icon>
         <span matListItemTitle>Franquicias</span>
-      </a>
-
-      <!-- FRANCHISE_OWNER -->
-      <a mat-list-item routerLink="/app/my-sellers" routerLinkActive="active" *ngIf="perm.is('FRANCHISE_OWNER')">
-        <mat-icon matListItemIcon>badge</mat-icon>
-        <span matListItemTitle>Mis vendedores</span>
       </a>
     </mat-nav-list>
   </mat-sidenav>
 
   <mat-sidenav-content class="content">
-    <mat-toolbar class="topbar" color="transparent">
-      <span class="spacer"></span>
+    <div class="topbar">
+      <div class="spacer"></div>
 
-      <div class="userBox">
-        <div class="userName">{{ userName() }}</div>
-        <div class="userRole">{{ role() }}</div>
+      <div class="who">
+        <div class="name">{{ userName() }}</div>
+        <div class="role">{{ role() }}</div>
       </div>
 
-      <button mat-stroked-button class="logoutBtn" (click)="logout()">Salir</button>
-    </mat-toolbar>
+      <button mat-stroked-button class="logout" (click)="logout()">
+        Salir
+      </button>
+    </div>
 
     <div class="page">
       <router-outlet></router-outlet>
