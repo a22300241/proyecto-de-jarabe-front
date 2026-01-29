@@ -9,11 +9,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+
 
 import { Router } from '@angular/router';
 import { ProductsService, ProductItem } from '../../../core/services/products.service';
 import { SalesService } from '../../../core/services/sales.service';
 import { SessionStore } from '../../../core/state/session.store';
+import { M } from '@angular/cdk/keycodes';
 
 type SaleItem = {
   productId: string;
@@ -28,7 +31,7 @@ type SaleItem = {
   imports: [
     CommonModule,
     FormsModule,
-
+    MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
@@ -46,9 +49,11 @@ export class SaleCreate implements OnInit {
   private salesService = inject(SalesService);
   private session = inject(SessionStore);
   private cdr = inject(ChangeDetectorRef);
-
+  public selectedProduct: ProductItem | null = null;
   public loading = false;
   public error: string | null = null;
+  private dialog = inject(MatDialog);
+
 
   // ✅ En blanco (como pediste)
   public cardNumber = '';
@@ -68,6 +73,15 @@ export class SaleCreate implements OnInit {
   async ngOnInit(): Promise<void> {
     await this.loadProducts();
   }
+  public confirmRemove(r: SaleItem): void {
+    const ok = confirm(`¿Seguro de eliminar "${r.name}" de la venta?`);
+
+    if (!ok) return;
+
+    this.items = this.items.filter(x => x.productId !== r.productId);
+    this.cdr.markForCheck();
+  }
+
 
   // =====================
   // Franquicia activa
@@ -84,7 +98,10 @@ export class SaleCreate implements OnInit {
     // FRANCHISE_OWNER / SELLER
     return user.franchiseId ?? null;
   }
-
+  public selectProduct(p: ProductItem): void {
+    this.selectedProduct = p;
+    this.scan = p?.name ?? '';
+  }
   // =====================
   // Productos
   // =====================
@@ -148,7 +165,7 @@ export class SaleCreate implements OnInit {
   // =====================
   public addSelected(p: ProductItem): void {
     if (!p?.id) return;
-
+    this.selectedProduct = p;
     const qty = Number(this.qty ?? 1);
     if (!qty || qty <= 0) return;
 
@@ -162,6 +179,8 @@ export class SaleCreate implements OnInit {
         price: p.price,
         qty,
       });
+      this.items = [...this.items]; // para que Angular detecte el cambio
+      this.cdr.markForCheck();
     }
 
     // limpia búsqueda y qty
@@ -174,10 +193,33 @@ export class SaleCreate implements OnInit {
 
   // Enter en el input: si hay sugerencias, mete la primera
   public addByScan(): void {
-    if (this.filteredProducts.length > 0) {
-      this.addSelected(this.filteredProducts[0]);
-    }
+  const p = this.selectedProduct ?? this.filteredProducts[0];
+  if (!p) return;
+
+  const qty = Number(this.qty ?? 1);
+  if (!qty || qty <= 0) return;
+
+  const existing = this.items.find(x => x.productId === p.id);
+  if (existing) {
+    existing.qty += qty;
+  } else {
+    this.items.push({
+      productId: p.id,
+      name: p.name,
+      price: p.price,
+      qty,
+    });
   }
+
+  this.items = [...this.items]; // refresca tabla
+  this.scan = '';
+  this.qty = 1;
+  this.filteredProducts = [];
+  this.selectedProduct = null;
+
+  this.cdr.markForCheck();
+}
+
 
   public removeItem(productId: string): void {
     this.items = this.items.filter((x) => x.productId !== productId);
