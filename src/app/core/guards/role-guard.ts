@@ -8,20 +8,17 @@ export const roleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
   const perms = inject(PermissionsService);
   const router = inject(Router);
 
-  // Si no hay sesión, al login
+  // Si no hay sesión, al login (ruta real)
   if (!session.isLoggedIn()) {
-    return router.parseUrl('/auth/login');
+    return router.parseUrl('/login');
   }
 
-  // Roles permitidos declarados en data: { roles: ['OWNER', ...] }
   const roles = (route.data?.['roles'] ?? null) as Role[] | null;
 
-  // Si no se declararon roles, dejamos pasar (no rompemos rutas)
   if (!roles || roles.length === 0) return true;
 
-  // Si cumple rol, pasa
   if (perms.isAny(...roles)) return true;
 
-  // Si NO cumple rol: NO logout, NO login. Solo lo mando al shell.
-  return router.parseUrl('/app');
+  // No logout, no login
+  return router.parseUrl('/app/dashboard');
 };

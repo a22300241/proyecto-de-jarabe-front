@@ -4,13 +4,23 @@ import { SessionStore } from '../state/session.store';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const session = inject(SessionStore);
-  const token = session.accessToken(); // ✅ computed signal
 
-  // ✅ NO poner token SOLO en login y refresh (pero SÍ en /auth/me)
-  const isAuthLogin = req.url.includes('/auth/login');
-  const isAuthRefresh = req.url.includes('/auth/refresh');
+  // No tocar login/refresh
+  if (req.url.includes('/auth/login') || req.url.includes('/auth/refresh')) {
+    return next(req);
+  }
 
-  if (isAuthLogin || isAuthRefresh) return next(req);
+  // ✅ toma token del store
+  const tokenFromStore = session.accessToken?.() ?? null;
+
+  // ✅ fallback por si algo no lo cargó (esto evita pantallas “sin token”)
+  const tokenFromLS =
+    localStorage.getItem('accessToken') ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('pos_accessToken') ||
+    null;
+
+  const token = tokenFromStore || tokenFromLS;
 
   if (!token) return next(req);
 

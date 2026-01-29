@@ -1,1 +1,22 @@
-<p>report-summary works!</p>
+<div class="page">
+  <div class="header">
+    <h2>Reportes</h2>
+
+    <button mat-stroked-button (click)="load()">
+      <mat-icon>refresh</mat-icon>
+      Recargar
+    </button>
+  </div>
+
+  <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
+  <div class="error" *ngIf="error">{{ error }}</div>
+
+  <mat-card *ngIf="data && !loading">
+    <mat-card-title>Resumen del día</mat-card-title>
+    <mat-card-content>
+      <div>Ventas: <b>{{ data.salesCount }}</b></div>
+      <div>Artículos: <b>{{ data.itemsQty }}</b></div>
+      <div>Total vendido: <b>{{ money(data.totalSold) }}</b></div>
+    </mat-card-content>
+  </mat-card>
+</div>

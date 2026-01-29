@@ -1,11 +1,124 @@
-.card { padding: 14px; }
-.header { display:flex; justify-content:space-between; align-items:center; gap:16px; }
-.title { font-size: 28px; font-weight: 700; }
-.subtitle { opacity: .7; }
-.actions { display:flex; gap:10px; }
-.content { margin-top: 14px; }
-.search { width: 420px; max-width: 100%; }
-.tableWrap { margin-top: 12px; overflow:auto; }
-.footer { margin-top: 14px; display:flex; justify-content:space-between; align-items:center; gap:16px; }
-.total { font-size: 18px; font-weight: 600; }
-.error { padding: 12px; border-radius: 10px; background: #ffecec; color:#9d1c1c; margin-bottom: 12px; }
+.page {
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.subtitle {
+  opacity: 0.7;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.form {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.field {
+  width: 320px;
+}
+
+.field.small {
+  width: 140px;
+}
+
+.table-wrap {
+  margin-top: 14px;
+  background: white;
+  border-radius: 14px;
+  padding: 8px;
+  overflow: auto;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.total {
+  font-size: 18px;
+}
+
+.error {
+  margin-top: 12px;
+  background: #ffe5e5;
+  color: #8a1c1c;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.empty {
+  padding: 16px;
+  opacity: 0.7;
+}
+
+.page {
+  padding: 16px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.field {
+  width: 320px;
+  max-width: 100%;
+}
+
+.qty {
+  width: 160px;
+  max-width: 100%;
+}
+
+.table-wrap {
+  margin-top: 12px;
+}
+
+.footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error {
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255, 0, 0, 0.08);
+}
+
+.empty {
+  margin-top: 10px;
+  opacity: 0.7;
+}
+
+.total {
+  font-weight: 600;
+}
+

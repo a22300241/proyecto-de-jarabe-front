@@ -56,6 +56,24 @@
         <div class="role">{{ role() }}</div>
       </div>
 
+     <!-- ✅ Selector SOLO para OWNER/PARTNER (compacto) -->
+      <mat-form-field
+        appearance="outline"
+        class="topbar-franchise"
+        *ngIf="isOwnerPartner()"
+      >
+        <mat-label>Franquicia</mat-label>
+        <mat-select
+          [value]="activeFranchiseId()"
+          (selectionChange)="onFranchiseChange($event.value)"
+        >
+          <mat-option *ngFor="let f of franchises" [value]="f.id">
+            {{ franchiseLabel(f) }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+
       <button mat-stroked-button class="logout" (click)="logout()">
         Salir
       </button>

@@ -1,69 +1,57 @@
-<mat-card class="card">
+<div class="page">
   <div class="header">
-    <div>
-      <div class="title">Ventas</div>
-      <div class="subtitle">Listado</div>
-    </div>
+    <h2>Ventas</h2>
 
     <div class="actions">
-      <button
-        mat-stroked-button
-        *ngIf="perm.can('sales.create')"
-        routerLink="/app/sales/new"
-      >
+      <a mat-raised-button color="primary" routerLink="/app/sales/new">
         <mat-icon>add</mat-icon>
         Nueva venta
-      </button>
+      </a>
 
-      <button mat-stroked-button (click)="load()">
+      <button mat-stroked-button (click)="onReload()">
         <mat-icon>refresh</mat-icon>
         Recargar
       </button>
     </div>
   </div>
 
-  <div class="content" *ngIf="!loading(); else loadingTpl">
-    <div class="error" *ngIf="error() as err">{{ err }}</div>
+  <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
 
-    <div class="tableWrap" *ngIf="!error()">
-      <table mat-table [dataSource]="dataSource" class="table">
-        <ng-container matColumnDef="createdAt">
-          <th mat-header-cell *matHeaderCellDef>Fecha</th>
-          <td mat-cell *matCellDef="let s">{{ s.createdAt | date:'short' }}</td>
-        </ng-container>
+  <div class="error" *ngIf="error">{{ error }}</div>
 
-        <ng-container matColumnDef="seller">
-          <th mat-header-cell *matHeaderCellDef>Vendedor</th>
-          <td mat-cell *matCellDef="let s">{{ s.sellerName ?? '—' }}</td>
-        </ng-container>
+  <table mat-table [dataSource]="sales" class="mat-elevation-z0" *ngIf="!loading">
+    <ng-container matColumnDef="createdAt">
+      <th mat-header-cell *matHeaderCellDef>Fecha</th>
+      <td mat-cell *matCellDef="let r">{{ r.createdAt | date:'short' }}</td>
+    </ng-container>
 
-        <ng-container matColumnDef="salesCount">
-          <th mat-header-cell *matHeaderCellDef>#</th>
-          <td mat-cell *matCellDef="let s">{{ s.salesCount }}</td>
-        </ng-container>
+    <ng-container matColumnDef="total">
+      <th mat-header-cell *matHeaderCellDef>Total</th>
+      <td mat-cell *matCellDef="let r">{{ money(r.total) }}</td>
+    </ng-container>
 
-        <ng-container matColumnDef="totalSold">
-          <th mat-header-cell *matHeaderCellDef>Total</th>
-          <td mat-cell *matCellDef="let s">{{ s.totalSold }}</td>
-        </ng-container>
+    <ng-container matColumnDef="status">
+      <th mat-header-cell *matHeaderCellDef>Estatus</th>
+      <td mat-cell *matCellDef="let r">{{ r.status }}</td>
+    </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns()"></tr>
-      </table>
+    <ng-container matColumnDef="items">
+      <th mat-header-cell *matHeaderCellDef>Productos</th>
+      <td mat-cell *matCellDef="let r">
+        <div *ngIf="r.items?.length; else noItems">
+          <div *ngFor="let it of r.items">
+            {{ itemLabel(it.productId) }} — x{{ it.qty }}
+          </div>
+        </div>
+        <ng-template #noItems>—</ng-template>
+      </td>
+    </ng-container>
 
-      <mat-paginator
-        [length]="total()"
-        [pageSize]="20"
-        [pageSizeOptions]="[10,20,50,100]"
-        (page)="pageChanged($event)">
-      </mat-paginator>
-    </div>
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+  </table>
+
+  <div class="empty" *ngIf="!loading && !error && sales.length === 0">
+    No hay ventas en esta franquicia.
   </div>
-
-  <ng-template #loadingTpl>
-    <div class="loading">
-      <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
-      <div class="muted">Cargando ventas…</div>
-    </div>
-  </ng-template>
-</mat-card>
+</div>

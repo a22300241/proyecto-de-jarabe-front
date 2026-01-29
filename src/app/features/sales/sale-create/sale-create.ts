@@ -1,148 +1,248 @@
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal, computed } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
-import { ReactiveFormsModule, FormArray, FormControl, FormGroup, Validators } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
-import { SessionStore } from '../../../core/state/session.store';
-import { SalesService } from '../../../core/services/sales.service';
+import { Router } from '@angular/router';
 import { ProductsService, ProductItem } from '../../../core/services/products.service';
+import { SalesService } from '../../../core/services/sales.service';
+import { SessionStore } from '../../../core/state/session.store';
+
+type SaleItem = {
+  productId: string;
+  name: string;
+  price: number; // centavos
+  qty: number;
+};
 
 @Component({
   selector: 'app-sale-create',
   standalone: true,
   imports: [
     CommonModule,
-    RouterModule,
-    ReactiveFormsModule,
-    MatCardModule,
-    MatIconModule,
-    MatButtonModule,
+    FormsModule,
+
     MatFormFieldModule,
     MatInputModule,
-    MatAutocompleteModule,
+    MatButtonModule,
+    MatIconModule,
     MatTableModule,
+    MatProgressBarModule,
+    MatAutocompleteModule,
   ],
   templateUrl: './sale-create.html',
-  styleUrls: ['./sale-create.scss'],
+  styleUrl: './sale-create.scss',
 })
-export class SaleCreate {
-  public session = inject(SessionStore);
-  public sales = inject(SalesService);
-  public products = inject(ProductsService);
-  public router = inject(Router);
+export class SaleCreate implements OnInit {
+  private router = inject(Router);
+  private productsService = inject(ProductsService);
+  private salesService = inject(SalesService);
+  private session = inject(SessionStore);
+  private cdr = inject(ChangeDetectorRef);
 
-  loading = signal(false);
-  error = signal<string | null>(null);
+  public loading = false;
+  public error: string | null = null;
+
+  // ✅ En blanco (como pediste)
+  public cardNumber = '';
 
   // input de búsqueda
-  searchCtrl = new FormControl<string>('', { nonNullable: true });
+  public scan = '';
+  public qty = 1;
 
-  // sugerencias
-  suggestions = signal<ProductItem[]>([]);
+  // cache de productos para buscar por nombre
+  public productsCache: ProductItem[] = [];
+  public filteredProducts: ProductItem[] = [];
 
-  // ✅ Tipado sencillo para que NO truenen los index signature errors
-  form = new FormGroup({
-    items: new FormArray<FormGroup<any>>([]),
-  });
+  // venta actual
+  public items: SaleItem[] = [];
+  public displayedColumns = ['name', 'qty', 'price', 'subtotal', 'actions'];
 
-  displayedColumns = ['name', 'price', 'qty', 'subtotal', 'actions'];
-
-  get itemsFA() {
-    return this.form.get('items') as FormArray<FormGroup<any>>;
+  async ngOnInit(): Promise<void> {
+    await this.loadProducts();
   }
 
-  total = computed(() => {
-    return this.itemsFA.controls.reduce((acc, g) => {
-      const price = Number(g.get('price')?.value ?? 0);
-      const qty = Number(g.get('qty')?.value ?? 0);
-      return acc + price * qty;
-    }, 0);
-  });
+  // =====================
+  // Franquicia activa
+  // =====================
+  private getFranchiseId(): string | null {
+    const user = this.session.user();
+    if (!user) return null;
 
-  ngOnInit() {
-    let t: any = null;
-    this.searchCtrl.valueChanges?.subscribe((txt) => {
-      if (t) clearTimeout(t);
-      t = setTimeout(() => this.search(txt ?? ''), 250);
-    });
+    if (user.role === 'OWNER' || user.role === 'PARTNER') {
+      // ✅ en tu store ya existe el signal
+      return this.session.activeFranchiseId() ?? null;
+    }
+
+    // FRANCHISE_OWNER / SELLER
+    return user.franchiseId ?? null;
   }
 
-  async search(txt: string) {
-    const q = txt.trim();
+  // =====================
+  // Productos
+  // =====================
+  public async loadProducts(): Promise<void> {
+    const franchiseId = this.getFranchiseId();
+
+    this.loading = true;
+    this.error = null;
+    this.cdr.markForCheck();
+
+    try {
+      // ✅ tu ProductsService.list ya acepta { franchiseId }
+      const list = await this.productsService.list({ franchiseId });
+
+      // algunos backends regresan {items,total}, pero el tuyo en postman se ve { total, items }
+      // así que lo toleramos:
+      const arr = Array.isArray(list as any)
+        ? (list as any)
+        : Array.isArray((list as any)?.items)
+          ? (list as any).items
+          : [];
+
+      this.productsCache = arr;
+      this.applyFilter();
+    } catch (e: any) {
+      this.productsCache = [];
+      this.filteredProducts = [];
+      this.error = e?.error?.message ?? e?.message ?? 'No se pudieron cargar productos';
+    } finally {
+      this.loading = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  public onSearchChange(): void {
+    this.applyFilter();
+  }
+
+  private applyFilter(): void {
+    const q = (this.scan ?? '').trim().toLowerCase();
+
     if (!q) {
-      this.suggestions.set([]);
+      // no llenes el dropdown si no escribe nada
+      this.filteredProducts = [];
       return;
     }
 
-    try {
-      const u = this.session.user();
-      const franchiseId = u?.franchiseId ?? null;
+    this.filteredProducts = this.productsCache
+      .filter((p) => (p?.isActive ?? true) === true)
+      .filter((p) => (p?.name ?? '').toLowerCase().includes(q))
+      .slice(0, 10);
+  }
 
-      const res = await this.products.search({ q, franchiseId });
-      this.suggestions.set(res);
-    } catch {
-      this.suggestions.set([]);
+  public productLabel(p: ProductItem): string {
+    const price = this.money(p.price);
+    return `${p.name} — ${price}`;
+  }
+
+  // =====================
+  // Items
+  // =====================
+  public addSelected(p: ProductItem): void {
+    if (!p?.id) return;
+
+    const qty = Number(this.qty ?? 1);
+    if (!qty || qty <= 0) return;
+
+    const existing = this.items.find((x) => x.productId === p.id);
+    if (existing) {
+      existing.qty += qty;
+    } else {
+      this.items.push({
+        productId: p.id,
+        name: p.name,
+        price: p.price,
+        qty,
+      });
+    }
+
+    // limpia búsqueda y qty
+    this.scan = '';
+    this.qty = 1;
+    this.filteredProducts = [];
+
+    this.cdr.markForCheck();
+  }
+
+  // Enter en el input: si hay sugerencias, mete la primera
+  public addByScan(): void {
+    if (this.filteredProducts.length > 0) {
+      this.addSelected(this.filteredProducts[0]);
     }
   }
 
-  pick(p: ProductItem) {
-    const fg = new FormGroup({
-      productId: new FormControl(p.id, { nonNullable: true, validators: [Validators.required] }),
-      name: new FormControl(p.name, { nonNullable: true, validators: [Validators.required] }),
-      price: new FormControl(p.price ?? 0, { nonNullable: true, validators: [Validators.required] }),
-      qty: new FormControl(1, { nonNullable: true, validators: [Validators.required, Validators.min(1)] }),
-    });
-
-    this.itemsFA.push(fg);
-
-    // limpiar input
-    this.searchCtrl.setValue('');
-    this.suggestions.set([]);
+  public removeItem(productId: string): void {
+    this.items = this.items.filter((x) => x.productId !== productId);
+    this.cdr.markForCheck();
   }
 
-  removeAt(i: number) {
-    this.itemsFA.removeAt(i);
+  public clear(): void {
+    this.items = [];
+    this.scan = '';
+    this.qty = 1;
+    this.error = null;
+    this.cdr.markForCheck();
   }
 
-  async submit() {
+  // =====================
+  // Totales
+  // =====================
+  public subtotal(r: SaleItem): number {
+    return (r.price ?? 0) * (r.qty ?? 0);
+  }
+
+  public total(): number {
+    return this.items.reduce((acc, r) => acc + this.subtotal(r), 0);
+  }
+
+  public money(cents: number): string {
+    const v = (cents ?? 0) / 100;
+    return v.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+  }
+
+  // =====================
+  // Submit
+  // =====================
+  public async submit(): Promise<void> {
+    this.loading = true;
+    this.error = null;
+    this.cdr.markForCheck();
+
     try {
-      this.error.set(null);
-
-      if (this.form.invalid) {
-        this.error.set('Revisa cantidades.');
-        return;
+      const card = (this.cardNumber ?? '').trim();
+      if (!card) {
+        throw new Error('Card Number es obligatorio');
       }
 
-      if (this.itemsFA.length === 0) {
-        this.error.set('Agrega al menos un producto.');
-        return;
+      if (this.items.length === 0) {
+        throw new Error('Agrega al menos 1 producto');
       }
 
-      this.loading.set(true);
+      // ✅ NO MANDAR franchiseId (tu backend lo toma de req.user)
+      await this.salesService.createSale({
+        cardNumber: card,
+        items: this.items.map((i) => ({ productId: i.productId, qty: i.qty })),
+      });
 
-      const u = this.session.user();
-      const franchiseId = u?.franchiseId ?? null;
-
-      const items = this.itemsFA.controls.map((g) => ({
-        productId: String(g.get('productId')?.value),
-        qty: Number(g.get('qty')?.value),
-      }));
-
-      await this.sales.createSale({ franchiseId, items });
-
-      this.router.navigateByUrl('/app/sales');
+      // ✅ como pediste
+      await this.router.navigateByUrl('/app/sales');
     } catch (e: any) {
-      this.error.set(e?.message ?? 'Error creando venta');
+      // muestra mensaje decente
+      this.error =
+        e?.error?.message ??
+        e?.message ??
+        'No se pudo crear la venta';
     } finally {
-      this.loading.set(false);
+      this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 }

@@ -1,15 +1,14 @@
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal, ViewChild } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { MatTableDataSource, MatTableModule } from '@angular/material/table';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { PermissionsService } from '../../../core/services/permissions.service';
-import { SalesService, SaleItem } from '../../../core/services/sales.service';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTableModule } from '@angular/material/table';
+
+import { SalesService, SaleListItem } from '../../../core/services/sales.service';
+import { ProductsService, ProductItem } from '../../../core/services/products.service';
 import { SessionStore } from '../../../core/state/session.store';
 
 @Component({
@@ -18,61 +17,198 @@ import { SessionStore } from '../../../core/state/session.store';
   imports: [
     CommonModule,
     RouterModule,
-    MatCardModule,
-    MatTableModule,
-    MatIconModule,
     MatButtonModule,
-    MatPaginatorModule,
-    MatProgressSpinnerModule,
+    MatIconModule,
+    MatProgressBarModule,
+    MatTableModule,
   ],
   templateUrl: './sales-list.html',
-  styleUrls: ['./sales-list.scss'],
+  styleUrl: './sales-list.scss',
 })
-export class SalesList {
-  public perm = inject(PermissionsService);
-  public sales = inject(SalesService);
-  public session = inject(SessionStore);
+export class SalesList implements OnInit {
+  private salesService = inject(SalesService);
+  private productsService = inject(ProductsService);
+  private session = inject(SessionStore);
+  private cdr = inject(ChangeDetectorRef);
 
-  loading = signal(false);
-  error = signal<string | null>(null);
+  public loading = false;
+  public error: string | null = null;
 
-  dataSource = new MatTableDataSource<SaleItem>([]);
-  total = signal(0);
+  public sales: SaleListItem[] = [];
 
-  displayedColumns = computed(() => ['createdAt', 'seller', 'salesCount', 'totalSold']);
+  // productId -> productName
+  public productNameById: Record<string, string> = {};
 
-  @ViewChild(MatPaginator) paginator?: MatPaginator;
+  public displayedColumns = ['createdAt', 'total', 'status', 'items'];
 
-  ngOnInit() {
-    this.load();
+  async ngOnInit(): Promise<void> {
+    await this.load();
   }
 
-  async load() {
+  private getFranchiseId(): string | null {
+    const user = this.session.user();
+    if (!user) return null;
+
+    // ✅ OWNER/PARTNER: usar franquicia activa del SessionStore (la que eliges en el selector)
+    if (user.role === 'OWNER' || user.role === 'PARTNER') {
+      return this.session.activeFranchiseId() ?? null;
+    }
+
+    // ✅ FRANCHISE_OWNER/SELLER: franquicia fija del usuario
+    return user.franchiseId ?? null;
+  }
+
+  public async load(): Promise<void> {
+    const franchiseId = this.getFranchiseId();
+
+    this.loading = true;
+    this.error = null;
+    this.cdr.markForCheck();
+
     try {
-      this.loading.set(true);
-      this.error.set(null);
+      // ✅ 1) Primero ventas (esto NO depende de /products)
+      const list = await this.salesService.list({ franchiseId });
+      this.sales = Array.isArray(list) ? list : [];
 
-      const u = this.session.user();
-      const franchiseId = u?.franchiseId ?? null;
-
-      // ✅ NO mandamos page/pageSize al backend
-      const rows = await this.sales.list({ franchiseId });
-
-      this.dataSource.data = rows;
-      this.total.set(rows.length);
-
-      // conectar paginator (paginación front)
-      queueMicrotask(() => {
-        if (this.paginator) this.dataSource.paginator = this.paginator;
-      });
+      // ✅ 2) Luego intentamos productos SOLO para nombres (si falla, no rompemos)
+      try {
+        const products: ProductItem[] = await this.productsService.list({ franchiseId });
+        const map: Record<string, string> = {};
+        for (const p of products) map[p.id] = p.name;
+        this.productNameById = map;
+      } catch {
+        // si /products falla (403), dejamos map vacío y mostramos id como fallback
+        this.productNameById = {};
+      }
     } catch (e: any) {
-      this.error.set(e?.message ?? 'Error cargando ventas');
+      this.sales = [];
+      this.error = e?.message ?? 'No se pudo cargar ventas';
     } finally {
-      this.loading.set(false);
+      this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
-  pageChanged(_: PageEvent) {
-    // nada: MatTableDataSource paginará solo
+  public onReload(): void {
+    void this.load();
+  }
+
+  public money(cents: number): string {
+    const v = (cents ?? 0) / 100;
+    return v.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+  }
+
+  public itemLabel(productId: string): string {
+    return this.productNameById[productId] ?? productId;
   }
 }
+
+
+
+
+/* import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTableModule } from '@angular/material/table';
+
+import { SalesService, SaleListItem } from '../../../core/services/sales.service';
+import { ProductsService, ProductItem } from '../../../core/services/products.service';
+import { SessionStore } from '../../../core/state/session.store';
+
+@Component({
+  selector: 'app-sales-list',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressBarModule,
+    MatTableModule,
+  ],
+  templateUrl: './sales-list.html',
+  styleUrl: './sales-list.scss',
+})
+export class SalesList implements OnInit {
+  private salesService = inject(SalesService);
+  private productsService = inject(ProductsService);
+  private session = inject(SessionStore);
+  private cdr = inject(ChangeDetectorRef);
+
+  public loading = false;
+  public error: string | null = null;
+
+  public sales: SaleListItem[] = [];
+
+  // productId -> productName
+  public productNameById: Record<string, string> = {};
+
+  public displayedColumns = ['createdAt', 'total', 'status', 'items'];
+
+  async ngOnInit(): Promise<void> {
+    await this.load();
+  }
+
+  private getFranchiseId(): string | null {
+    const user = this.session.user();
+    const role = user?.role ?? null;
+    if (!user) return null;
+
+    if (role === 'OWNER' || role === 'PARTNER') {
+      // 👇 usa la misma key que ya tienes funcionando en tu shell
+      const stored = localStorage.getItem('activeFranchiseId');
+      return stored ? stored : null;
+    }
+
+    return user.franchiseId ?? null;
+  }
+
+  public async load(): Promise<void> {
+    const franchiseId = this.getFranchiseId();
+
+    this.loading = true;
+    this.error = null;
+    this.cdr.markForCheck();
+
+    try {
+      // ✅ 1) Primero ventas (esto NO depende de /products)
+      const list = await this.salesService.list({ franchiseId });
+      this.sales = Array.isArray(list) ? list : [];
+
+      // ✅ 2) Luego intentamos productos SOLO para nombres (si falla, no rompemos)
+      try {
+        const products: ProductItem[] = await this.productsService.list({ franchiseId });
+        const map: Record<string, string> = {};
+        for (const p of products) map[p.id] = p.name;
+        this.productNameById = map;
+      } catch {
+        // si /products falla (403), dejamos map vacío y mostramos id como fallback
+        this.productNameById = {};
+      }
+    } catch (e: any) {
+      this.sales = [];
+      this.error = e?.message ?? 'No se pudo cargar ventas';
+    } finally {
+      this.loading = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  public onReload(): void {
+    void this.load();
+  }
+
+  public money(cents: number): string {
+    const v = (cents ?? 0) / 100;
+    return v.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+  }
+
+  public itemLabel(productId: string): string {
+    return this.productNameById[productId] ?? productId;
+  }
+}
+ */

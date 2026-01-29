@@ -21,6 +21,7 @@ export class AuthService {
 
   private baseUrl = 'http://localhost:3000';
 
+
   async login(email: string, password: string): Promise<void> {
     const res = await firstValueFrom(
       this.http.post<LoginResponse>(`${this.baseUrl}/auth/login`, { email, password })
