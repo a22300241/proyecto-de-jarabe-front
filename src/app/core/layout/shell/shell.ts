@@ -1,4 +1,98 @@
+import { ChangeDetectorRef, Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router, RouterModule } from '@angular/router';
+
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatListModule } from '@angular/material/list';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+
+import { SessionStore } from '../../state/session.store';
+import { PermissionsService } from '../../services/permissions.service';
+import { FranchisesService, FranchiseItem } from '../../services/franchises.service';
+import { firstValueFrom } from 'rxjs';
+
+@Component({
+  selector: 'app-shell',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterModule,
+
+    MatSidenavModule,
+    MatListModule,
+    MatIconModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatSelectModule,
+  ],
+  templateUrl: './shell.html',
+  styleUrl: './shell.scss',
+})
+export class ShellComponent {
+  private router = inject(Router);
+  private session = inject(SessionStore);
+  public perm = inject(PermissionsService);
+
+  private franchisesService = inject(FranchisesService);
+  private cdr = inject(ChangeDetectorRef);
+
+  public franchises: FranchiseItem[] = [];
+
+  public userName = computed(() => this.session.user()?.name ?? '');
+  public role = computed(() => this.session.user()?.role ?? '');
+
+  public activeFranchiseId = computed(() => this.session.activeFranchiseId() ?? null);
+
+  constructor() {
+    void this.loadFranchisesIfNeeded();
+  }
+
+  public isOwnerPartner(): boolean {
+    const r = this.session.user()?.role ?? null;
+    return r === 'OWNER' || r === 'PARTNER';
+  }
+
+  private async loadFranchisesIfNeeded(): Promise<void> {
+    if (!this.isOwnerPartner()) return;
+
+    try {
+      const res = await firstValueFrom(this.franchisesService.listAll());
+      this.franchises = Array.isArray(res) ? res : [];
+
+      if (!this.session.activeFranchiseId() && this.franchises.length > 0) {
+        this.session.setActiveFranchiseId(this.franchises[0].id);
+      }
+    } catch {
+      this.franchises = [];
+    } finally {
+      this.cdr.markForCheck();
+    }
+  }
+
+  public onFranchiseChange(franchiseId: string | null): void {
+    this.session.setActiveFranchiseId(franchiseId ?? null);
+  }
+
+  public franchiseLabel(f: FranchiseItem): string {
+    return f.name;
+  }
+
+  // ✅ NAVEGACIÓN SEGURA (sin depender de routerLink)
+  public go(url: string): void {
+    void this.router.navigateByUrl(url);
+  }
+
+  public logout(): void {
+    this.session.clear();
+    void this.router.navigateByUrl('/login');
+  }
+}
+
+
+/* import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -110,3 +204,4 @@ export class ShellComponent implements OnInit {
     this.router.navigateByUrl('/login');
   }
 }
+ */

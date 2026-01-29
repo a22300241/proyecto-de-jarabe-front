@@ -75,3 +75,33 @@
 .topbar-franchise ::ng-deep .mat-mdc-form-field-flex {
   align-items: center;
 }
+/* ===== SIDENAV ===== */
+.sidenav {
+  border-right: 1px solid #e0e0e0; // gris claro
+}
+
+/* quita sensación de “líneas gruesas” */
+.mat-mdc-list-item {
+  --mdc-list-list-item-leading-icon-color: #6b7280;
+  --mdc-list-list-item-label-text-color: #374151;
+}
+
+/* hover más sutil */
+.mat-mdc-list-item:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* separador */
+.divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 8px 0;
+}
+
+/* selector franquicia */
+.topbar-franchise .mdc-notched-outline__leading,
+.topbar-franchise .mdc-notched-outline__trailing,
+.topbar-franchise .mdc-notched-outline__notch {
+  border-color: #d1d5db !important;
+  border-width: 1px !important;
+}

@@ -69,10 +69,12 @@ export const routes: Routes = [
 
       // ✅ USERS / FRANCHISES
       {
-        path: 'users',
-        loadComponent: () =>
-          import('./features/users/users-list/users-list').then((m) => m.UsersList),
-      },
+  path: 'users',
+  loadComponent: () =>
+    import('./features/users/users-list/users-list').then((m) => m.UsersList),
+},
+
+
       {
         path: 'franchises',
         loadComponent: () =>

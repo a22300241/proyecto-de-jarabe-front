@@ -6,44 +6,62 @@
     </div>
 
     <mat-nav-list>
-      <a mat-list-item routerLink="/app" routerLinkActive="active">
+      <button mat-list-item type="button" (click)="go('/app/dashboard')">
         <mat-icon matListItemIcon>dashboard</mat-icon>
         <span matListItemTitle>Dashboard</span>
-      </a>
+      </button>
 
-      <a mat-list-item routerLink="/app/products" routerLinkActive="active">
+      <button mat-list-item type="button" (click)="go('/app/products')">
         <mat-icon matListItemIcon>inventory_2</mat-icon>
         <span matListItemTitle>Productos</span>
-      </a>
+      </button>
 
-      <a mat-list-item routerLink="/app/sales" routerLinkActive="active">
+      <button mat-list-item type="button" (click)="go('/app/sales')">
         <mat-icon matListItemIcon>point_of_sale</mat-icon>
         <span matListItemTitle>Ventas</span>
-      </a>
+      </button>
 
-      <!-- ✅ SELLER: NO Reportes (como pediste) -->
-       <a mat-list-item routerLink="/app/reports" routerLinkActive="active" *ngIf="perm.can('reports.view')">
+      <button
+        mat-list-item
+        type="button"
+        (click)="go('/app/reports/summary')"
+        *ngIf="perm.can('reports.view')"
+      >
         <mat-icon matListItemIcon>bar_chart</mat-icon>
         <span matListItemTitle>Reportes</span>
-      </a>
+      </button>
 
-      <!-- ✅ Chat para SELLER también -->
-      <a mat-list-item routerLink="/app/chat" routerLinkActive="active" *ngIf="perm.can('chat.view')">
+      <button
+        mat-list-item
+        type="button"
+        (click)="go('/app/chat')"
+        *ngIf="perm.can('chat.view')"
+      >
         <mat-icon matListItemIcon>chat</mat-icon>
         <span matListItemTitle>Chat</span>
-      </a>
+      </button>
 
       <div class="divider" *ngIf="perm.can('users.view') || perm.can('franchises.view')"></div>
 
-      <a mat-list-item routerLink="/app/users" routerLinkActive="active" *ngIf="perm.can('users.view')">
+      <button
+        mat-list-item
+        type="button"
+        (click)="go('/app/users')"
+        *ngIf="perm.can('users.view')"
+      >
         <mat-icon matListItemIcon>group</mat-icon>
         <span matListItemTitle>Usuarios</span>
-      </a>
+      </button>
 
-      <a mat-list-item routerLink="/app/franchises" routerLinkActive="active" *ngIf="perm.can('franchises.view')">
+      <button
+        mat-list-item
+        type="button"
+        (click)="go('/app/franchises')"
+        *ngIf="perm.can('franchises.view')"
+      >
         <mat-icon matListItemIcon>store</mat-icon>
         <span matListItemTitle>Franquicias</span>
-      </a>
+      </button>
     </mat-nav-list>
   </mat-sidenav>
 
@@ -51,12 +69,7 @@
     <div class="topbar">
       <div class="spacer"></div>
 
-      <div class="who">
-        <div class="name">{{ userName() }}</div>
-        <div class="role">{{ role() }}</div>
-      </div>
-
-     <!-- ✅ Selector SOLO para OWNER/PARTNER (compacto) -->
+      <!-- ✅ Selector SOLO para OWNER/PARTNER -->
       <mat-form-field
         appearance="outline"
         class="topbar-franchise"
@@ -73,6 +86,10 @@
         </mat-select>
       </mat-form-field>
 
+      <div class="who">
+        <div class="name">{{ userName() }}</div>
+        <div class="role">{{ role() }}</div>
+      </div>
 
       <button mat-stroked-button class="logout" (click)="logout()">
         Salir
