@@ -1,6 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environments.prod';
 
 export interface SaleListItem {
   id: string;
@@ -19,7 +21,7 @@ export interface SaleListItem {
 @Injectable({ providedIn: 'root' })
 export class SalesService {
   private http = inject(HttpClient);
-  private baseUrl = 'http://localhost:3000';
+  private baseUrl = environment.apiUrl;
 
   async list(params: { franchiseId: string | null }): Promise<SaleListItem[]> {
     const q: any = {};
@@ -40,5 +42,17 @@ export class SalesService {
     this.http.post(`${this.baseUrl}/sales`, body)
   );
 }
+ getAll(franchiseId?: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/sales`, {
+      params: franchiseId ? { franchiseId } : {},
+    });
+  }
+
+  cancelSale(saleId: string, reason: string): Observable<any> {
+    return this.http.post(
+      `${this.baseUrl}/sales/${saleId}/cancel`,
+      { reason }
+    );
+  }
 
 }
