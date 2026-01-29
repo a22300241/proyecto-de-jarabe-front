@@ -5,28 +5,23 @@ import { SessionStore } from '../state/session.store';
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const session = inject(SessionStore);
 
-  // No tocar login/refresh
-  if (req.url.includes('/auth/login') || req.url.includes('/auth/refresh')) {
-    return next(req);
-  }
-
-  // ✅ toma token del store
-  const tokenFromStore = session.accessToken?.() ?? null;
-
-  // ✅ fallback por si algo no lo cargó (esto evita pantallas “sin token”)
-  const tokenFromLS =
-    localStorage.getItem('accessToken') ||
-    localStorage.getItem('token') ||
-    localStorage.getItem('pos_accessToken') ||
+  // OJO: dependiendo tu store, puede ser session.accessToken() o session.token()
+  const token =
+    (session as any).accessToken?.() ??
+    (session as any).token?.() ??
+    (session as any).accessToken ??
+    (session as any).token ??
     null;
 
-  const token = tokenFromStore || tokenFromLS;
-
+  // Si NO hay token, manda la request normal
   if (!token) return next(req);
 
-  return next(
-    req.clone({
-      setHeaders: { Authorization: `Bearer ${token}` },
-    })
-  );
+  // Agrega Authorization
+  const authReq = req.clone({
+    setHeaders: { Authorization: `Bearer ${token}` },
+  });
+
+  return next(authReq);
 };
+
+

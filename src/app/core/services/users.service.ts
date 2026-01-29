@@ -1,6 +1,7 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../environments/environments';
 
 export type Role = 'OWNER' | 'PARTNER' | 'FRANCHISE_OWNER' | 'SELLER';
 
@@ -11,87 +12,49 @@ export type UserDto = {
   role: Role;
   franchiseId: string | null;
   createdAt: string;
-  isActive: boolean; // ✅ viene del backend
-};
-
-@Injectable({ providedIn: 'root' })
-export class UsersService {
-  private http = inject(HttpClient);
-
-  // si tú ya usas environment, cambia esto a tu env.baseUrl
-  private baseUrl = 'http://localhost:3000';
-
-  list(franchiseId?: string): Observable<UserDto[]> {
-    let params = new HttpParams();
-    if (franchiseId) params = params.set('franchiseId', franchiseId);
-    return this.http.get<UserDto[]>(`${this.baseUrl}/users`, { params });
-  }
-
-  deactivate(userId: string) {
-    return this.http.patch<{ ok: true; userId: string; isActive: boolean }>(
-      `${this.baseUrl}/users/${userId}/deactivate`,
-      {}
-    );
-  }
-
-  activate(userId: string) {
-    return this.http.patch<{ ok: true; userId: string; isActive: boolean }>(
-      `${this.baseUrl}/users/${userId}/activate`,
-      {}
-    );
-  }
-}
-
-
-
-/* import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
-
-export type Role = 'OWNER' | 'PARTNER' | 'FRANCHISE_OWNER' | 'SELLER';
-
-export type UserItem = {
-  id: string;
-  email: string;
-  name: string;
-  role: Role;
-  franchiseId: string | null;
-  createdAt?: string;
-  isActive?: boolean; // 👈 puede venir o no, por eso es opcional
-};
-
-type ToggleResponse = {
-  ok: boolean;
-  userId: string;
   isActive: boolean;
 };
 
+export type CreateUserBody = {
+  email: string;
+  password: string;
+  name: string;
+  role: Role;
+  franchiseId?: string; // SOLO cuando role=SELLER o FRANCHISE_OWNER
+};
+
 @Injectable({ providedIn: 'root' })
 export class UsersService {
-  private http = inject(HttpClient);
-  private baseUrl = 'http://localhost:3000';
+  constructor(private http: HttpClient) {}
 
-  async list(params?: { franchiseId?: string | null }): Promise<UserItem[]> {
-    const qp: any = {};
-    if (params?.franchiseId) qp.franchiseId = params.franchiseId;
+  // GET /users?franchiseId=...
+  async list(franchiseId?: string): Promise<UserDto[]> {
+    let params = new HttpParams();
+    if (franchiseId) params = params.set('franchiseId', franchiseId);
 
-    return await firstValueFrom(
-      this.http.get<UserItem[]>(`${this.baseUrl}/users`, { params: qp })
-    );
+    const url = `${environment.apiUrl}/users`;
+    return firstValueFrom(this.http.get<UserDto[]>(url, { params }));
   }
 
-  async deactivate(id: string): Promise<ToggleResponse> {
-    return await firstValueFrom(
-      this.http.patch<ToggleResponse>(`${this.baseUrl}/users/${id}/deactivate`, {})
-    );
+  // POST /users
+  async createUser(body: CreateUserBody) {
+    const url = `${environment.apiUrl}/users`;
+    return firstValueFrom(this.http.post(url, body));
   }
 
-  async activate(id: string): Promise<ToggleResponse> {
-    return await firstValueFrom(
-      this.http.patch<ToggleResponse>(`${this.baseUrl}/users/${id}/activate`, {})
-    );
+  // PATCH /users/:id/deactivate
+  async deactivate(userId: string): Promise<{ ok: true; userId: string; isActive: boolean }> {
+    const url = `${environment.apiUrl}/users/${userId}/deactivate`;
+    return firstValueFrom(this.http.patch<{ ok: true; userId: string; isActive: boolean }>(url, {}));
+  }
+
+  // PATCH /users/:id/activate
+  async activate(userId: string): Promise<{ ok: true; userId: string; isActive: boolean }> {
+    const url = `${environment.apiUrl}/users/${userId}/activate`;
+    return firstValueFrom(this.http.patch<{ ok: true; userId: string; isActive: boolean }>(url, {}));
   }
 }
 
 
- */
+
+

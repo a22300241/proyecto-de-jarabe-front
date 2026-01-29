@@ -45,7 +45,6 @@ export const routes: Routes = [
       // ✅ REPORTES
       // 🔥 CLAVE: si tu menú apunta a /app/reports, ESTA RUTA DEBE EXISTIR
       { path: 'reports', pathMatch: 'full', redirectTo: 'reports/summary' },
-
       {
         path: 'reports/summary',
         loadComponent: () =>
@@ -69,12 +68,16 @@ export const routes: Routes = [
 
       // ✅ USERS / FRANCHISES
       {
-  path: 'users',
-  loadComponent: () =>
-    import('./features/users/users-list/users-list').then((m) => m.UsersList),
-},
-
-
+        path: 'users',
+        loadComponent: () =>
+          import('./features/users/users-list/users-list').then((m) => m.UsersList),
+      },
+      {
+        path: 'users/create',
+        canActivate: [authGuard],
+        data: { roles: ['OWNER','PARTNER','FRANCHISE_OWNER'] },
+        loadComponent: () => import('./features/users/users-create/users-create').then(m => m.UsersCreate),
+      },
       {
         path: 'franchises',
         loadComponent: () =>
@@ -92,7 +95,8 @@ export const routes: Routes = [
 
   // ✅ raíz
   { path: '', pathMatch: 'full', redirectTo: 'login' },
-
+  { path: 'users', redirectTo: 'app/users', pathMatch: 'full' },
+  { path: 'users/create', redirectTo: 'app/users/create', pathMatch: 'full' },
   // ✅ wildcard global
   { path: '**', redirectTo: 'login' },
 ];

@@ -2,6 +2,13 @@
   <div class="header">
     <h2>Usuarios</h2>
 
+
+    <button mat-stroked-button class="btn" [routerLink]="['/app/users/create']">
+      <mat-icon>person_add</mat-icon>
+      Nuevo usuario
+    </button>
+
+
     <button mat-stroked-button (click)="onReload()" [disabled]="loading">
       <mat-icon>refresh</mat-icon>
       Recargar

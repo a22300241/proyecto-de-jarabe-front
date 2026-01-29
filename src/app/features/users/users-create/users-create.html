@@ -1,0 +1,49 @@
+<div class="page">
+  <h2>Crear usuario</h2>
+
+  <button class="btn" mat-stroked-button type="button" (click)="onBack()">
+    Volver
+  </button>
+
+  <div class="error" *ngIf="error">{{ error }}</div>
+
+  <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
+
+  <form class="form" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <mat-form-field appearance="outline">
+      <mat-label>Correo*</mat-label>
+      <input matInput formControlName="email" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Contraseña*</mat-label>
+      <input matInput type="password" formControlName="password" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Nombre*</mat-label>
+      <input matInput formControlName="name" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Rol*</mat-label>
+      <mat-select formControlName="role">
+        <mat-option *ngFor="let r of rolesForOwner" [value]="r">{{ r }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Franquicia SOLO si aplica -->
+    <mat-form-field appearance="outline" *ngIf="needsFranchise">
+      <mat-label>Franquicia</mat-label>
+      <mat-select formControlName="franchiseId">
+        <mat-option *ngFor="let f of franchises" [value]="f.id">
+          {{ f.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <button class="btn" mat-stroked-button type="submit" [disabled]="loading">
+      Crear
+    </button>
+  </form>
+</div>

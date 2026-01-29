@@ -1,5 +1,6 @@
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,6 +22,7 @@ import { SessionStore } from '../../../core/state/session.store';
     MatProgressBarModule,
     MatIconModule,
     MatChipsModule,
+    RouterModule,
   ],
   templateUrl: './users-list.html',
   styleUrl: './users-list.scss',
@@ -65,7 +67,7 @@ export class UsersList implements OnInit {
 
     try {
       const franchiseId = this.getFranchiseIdForQuery();
-      const res = await firstValueFrom(this.usersApi.list(franchiseId));
+      const res = await this.usersApi.list(franchiseId);
       this.users = Array.isArray(res) ? res : [];
     } catch (e: any) {
       this.users = [];
@@ -85,30 +87,31 @@ export class UsersList implements OnInit {
   }
 
   public async toggleActive(u: UserDto): Promise<void> {
-    // ✅ NO permitir desactivarte tú mismo (extra seguro)
-    const me = this.session.user();
-    if (me?.userId && u.id === me.userId) return;
+  // ✅ No permitir desactivarte tú mismo (extra seguro)
+  const me = this.session.user();
+  if (me?.userId && u.id === me.userId) return;
 
-    this.loading = true;
-    this.error = null;
-    this.cdr.markForCheck();
+  this.loading = true;
+  this.error = null;
+  this.cdr.markForCheck();
 
-    try {
-      const res = u.isActive
-        ? await firstValueFrom(this.usersApi.deactivate(u.id))
-        : await firstValueFrom(this.usersApi.activate(u.id));
+  try {
+    const res: { ok: true; userId: string; isActive: boolean } = u.isActive
+      ? await this.usersApi.deactivate(u.id)
+      : await this.usersApi.activate(u.id);
 
-      // ✅ Actualiza SOLO ese usuario en la lista para que cambie el botón
-      const idx = this.users.findIndex(x => x.id === u.id);
-      if (idx >= 0) {
-        this.users[idx] = { ...this.users[idx], isActive: !!res.isActive };
-        this.users = [...this.users]; // fuerza refresco tabla
-      }
-    } catch (e: any) {
-      this.error = e?.error?.message ?? e?.message ?? 'No se pudo cambiar el estado';
-    } finally {
-      this.loading = false;
-      this.cdr.markForCheck();
+    // ✅ actualiza SOLO ese usuario en la tabla
+    const idx = this.users.findIndex(x => x.id === u.id);
+    if (idx >= 0) {
+      this.users[idx] = { ...this.users[idx], isActive: res.isActive };
+      this.users = [...this.users]; // refresca tabla
     }
+  } catch (e: any) {
+    this.error = e?.error?.message ?? e?.message ?? 'No se pudo cambiar el estado';
+  } finally {
+    this.loading = false;
+    this.cdr.markForCheck();
   }
+}
+
 }

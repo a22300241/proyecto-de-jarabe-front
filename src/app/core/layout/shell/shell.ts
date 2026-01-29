@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 
@@ -9,18 +9,21 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 
-import { SessionStore } from '../../state/session.store';
-import { PermissionsService } from '../../services/permissions.service';
-import { FranchisesService, FranchiseItem } from '../../services/franchises.service';
-import { firstValueFrom } from 'rxjs';
+import { SessionStore } from '../../state/session.store'; // ✅ AJUSTA si tu ruta cambia
+import { PermissionsService } from '../../services/permissions.service'; // ✅ AJUSTA si tu ruta cambia
+import { FranchisesService } from '../../services/franchises.service'; // ✅ AJUSTA si tu ruta cambia
+
+type FranchiseItem = { id: string; name?: string | null };
 
 @Component({
   selector: 'app-shell',
   standalone: true,
+  templateUrl: './shell.html',
+  styleUrl: './shell.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     RouterModule,
-
     MatSidenavModule,
     MatListModule,
     MatIconModule,
@@ -28,180 +31,73 @@ import { firstValueFrom } from 'rxjs';
     MatFormFieldModule,
     MatSelectModule,
   ],
-  templateUrl: './shell.html',
-  styleUrl: './shell.scss',
 })
 export class ShellComponent {
   private router = inject(Router);
   private session = inject(SessionStore);
+
+  // ✅ lo pide el HTML (perm.can('...'))
   public perm = inject(PermissionsService);
 
-  private franchisesService = inject(FranchisesService);
-  private cdr = inject(ChangeDetectorRef);
-
+  // ✅ selector de franquicias (solo OWNER/PARTNER)
+  private franchisesApi = inject(FranchisesService);
   public franchises: FranchiseItem[] = [];
 
+  // ✅ lo pide el HTML
   public userName = computed(() => this.session.user()?.name ?? '');
   public role = computed(() => this.session.user()?.role ?? '');
-
   public activeFranchiseId = computed(() => this.session.activeFranchiseId() ?? null);
 
   constructor() {
-    void this.loadFranchisesIfNeeded();
+    // carga franquicias cuando sea necesario
+    this.loadFranchisesIfNeeded();
   }
 
+  // ✅ lo pide el HTML
+  public go(path: string) {
+    this.router.navigateByUrl(path);
+  }
+
+  // ✅ lo pide el HTML
+  public logout() {
+    this.session.clear(); // o this.session.logout() si así lo tienes
+    this.router.navigateByUrl('/login');
+  }
+
+  // ✅ lo pide el HTML
   public isOwnerPartner(): boolean {
     const r = this.session.user()?.role ?? null;
     return r === 'OWNER' || r === 'PARTNER';
   }
 
+  // ✅ lo pide el HTML (label en el selector)
+  public franchiseLabel(f: FranchiseItem) {
+    return f?.name ? f.name : f.id;
+  }
+
+  // ✅ lo pide el HTML (selectionChange)
+  public onFranchiseChange(franchiseId: string) {
+    this.session.setActiveFranchiseId(franchiseId);
+  }
+
   private async loadFranchisesIfNeeded(): Promise<void> {
+    // solo OWNER/PARTNER usan selector
     if (!this.isOwnerPartner()) return;
 
     try {
-      const res = await firstValueFrom(this.franchisesService.listAll());
+      // ✅ aquí NO uses usersApi. Es franchisesApi.
+      // Cambia el nombre del método según tu servicio:
+      // - listAll()
+      // - list()
+      // - getAll()
+      // - getFranchises()
+      const res = await this.franchisesApi.listAll(); // 👈 si tu servicio NO se llama así, dime cómo se llama
       this.franchises = Array.isArray(res) ? res : [];
-
       if (!this.session.activeFranchiseId() && this.franchises.length > 0) {
         this.session.setActiveFranchiseId(this.franchises[0].id);
       }
     } catch {
       this.franchises = [];
-    } finally {
-      this.cdr.markForCheck();
     }
-  }
-
-  public onFranchiseChange(franchiseId: string | null): void {
-    this.session.setActiveFranchiseId(franchiseId ?? null);
-  }
-
-  public franchiseLabel(f: FranchiseItem): string {
-    return f.name;
-  }
-
-  // ✅ NAVEGACIÓN SEGURA (sin depender de routerLink)
-  public go(url: string): void {
-    void this.router.navigateByUrl(url);
-  }
-
-  public logout(): void {
-    this.session.clear();
-    void this.router.navigateByUrl('/login');
   }
 }
-
-
-/* import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
-
-import { MatSidenavModule } from '@angular/material/sidenav';
-import { MatListModule } from '@angular/material/list';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-
-import { SessionStore, SessionTokens, SessionUser } from '../../state/session.store';
-import { AuthService } from '../../services/auth.service';
-import { PermissionsService } from '../../services/permissions.service';
-import { FranchisesService, FranchiseItem } from '../../services/franchises.service';
-
-@Component({
-  selector: 'app-shell',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-
-    MatSidenavModule,
-    MatListModule,
-    MatIconModule,
-    MatButtonModule,
-
-    MatFormFieldModule,
-    MatSelectModule,
-  ],
-  templateUrl: './shell.html',
-  styleUrl: './shell.scss',
-})
-export class ShellComponent implements OnInit {
-  private router = inject(Router);
-  private auth = inject(AuthService);
-  private session = inject(SessionStore);
-  public perm = inject(PermissionsService);
-  private franchisesService = inject(FranchisesService);
-
-  // 👇 usado por tu HTML: *ngFor="let f of franchises"
-  public franchises: FranchiseItem[] = [];
-
-  // 👇 usado por tu HTML: {{ userName() }} / {{ role() }}
-  public userName = computed(() => this.session.user()?.name ?? '—');
-  public role = computed(() => this.session.user()?.role ?? '—');
-
-  async ngOnInit(): Promise<void> {
-    // Si es OWNER/PARTNER, cargamos franquicias para el selector
-    if (this.isOwnerPartner()) {
-      await this.loadFranchises();
-
-      // Si no hay franquicia activa, ponemos la primera disponible
-      const current = this.activeFranchiseId();
-      if (!current && this.franchises.length > 0) {
-        this.onFranchiseChange(this.franchises[0].id);
-      }
-    }
-  }
-
-  // ✅ Tu HTML lo usa: *ngIf="isOwnerPartner()"
-  public isOwnerPartner(): boolean {
-    return this.perm.isAny('OWNER', 'PARTNER');
-  }
-
-  // ✅ Tu HTML lo usa: [value]="activeFranchiseId()"
-  public activeFranchiseId(): string | null {
-    return this.session.user()?.franchiseId ?? null;
-  }
-
-  // ✅ Tu HTML lo usa: {{ franchiseLabel(f) }}
-  public franchiseLabel(f: FranchiseItem): string {
-    return f.name ?? f.id;
-  }
-
-  public async loadFranchises(): Promise<void> {
-    try {
-      this.franchises = await firstValueFrom(this.franchisesService.listAll());
-    } catch {
-      this.franchises = [];
-    }
-  }
-
-  // ✅ Tu HTML lo usa: (selectionChange)="onFranchiseChange($event.value)"
-  public onFranchiseChange(franchiseId: string): void {
-    const user = this.session.user();
-    const tokens = this.session.tokens();
-
-    if (!user || !tokens) return;
-
-    // Importante: NO cambiar tokens, solo actualizar franchiseId
-    const nextUser: SessionUser = {
-      ...user,
-      franchiseId,
-    };
-
-    const nextTokens: SessionTokens = {
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-    };
-
-    this.session.setSession(nextUser, nextTokens);
-  }
-
-  public logout(): void {
-    this.auth.logout();
-    this.router.navigateByUrl('/login');
-  }
-}
- */
