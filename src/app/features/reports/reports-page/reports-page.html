@@ -1,0 +1,201 @@
+<div *ngIf="!canSeeReports()" style="padding:16px; opacity:.8;">
+  No tienes permisos para ver reportes.
+</div>
+
+<div *ngIf="canSeeReports()" style="padding:16px; display:flex; flex-direction:column; gap:14px;">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <h2 style="margin:0;">Reportes</h2>
+    <button mat-stroked-button (click)="clearFilters()">Limpiar filtros</button>
+  </div>
+
+  <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
+
+  <div *ngIf="error"
+    style="background:#ffd9d9; border:1px solid rgba(0,0,0,.08); padding:10px 12px; border-radius:12px;">
+    {{ error }}
+  </div>
+
+  <!-- Franquicia activa (solo display) -->
+  <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+    <mat-form-field appearance="outline" style="min-width:320px;">
+      <mat-label>Franquicia seleccionada</mat-label>
+      <input matInput [value]="getActiveFranchiseId() || ''" disabled />
+      <div style="opacity:.7; font-size:12px; padding-top:6px;">
+        Se toma del dropdown superior.
+      </div>
+    </mat-form-field>
+  </div>
+
+  <!-- Filtros: fechas + usuario -->
+  <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+
+    <mat-form-field appearance="outline">
+      <mat-label>Desde</mat-label>
+      <input
+        matInput
+        [matDatepicker]="dpFrom"
+        [(ngModel)]="from"
+        (ngModelChange)="onFromChange($event)"
+      />
+      <mat-datepicker-toggle matSuffix [for]="dpFrom"></mat-datepicker-toggle>
+      <mat-datepicker #dpFrom></mat-datepicker>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Hasta</mat-label>
+      <input
+        matInput
+        [matDatepicker]="dpTo"
+        [(ngModel)]="to"
+        (ngModelChange)="onToChange($event)"
+      />
+      <mat-datepicker-toggle matSuffix [for]="dpTo"></mat-datepicker-toggle>
+      <mat-datepicker #dpTo></mat-datepicker>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" style="min-width:320px;">
+      <mat-label>Usuario (vendedor) opcional</mat-label>
+      <input
+        matInput
+        [value]="selectedUser ? (selectedUser.name || selectedUser.id) : ''"
+        placeholder="Selecciona un usuario"
+        readonly
+      />
+      <div style="display:flex; gap:8px; padding-top:10px; flex-wrap:wrap;">
+        <button mat-stroked-button type="button" (click)="openUserModal()">Elegir usuario</button>
+        <button mat-stroked-button type="button" (click)="clearUser()" [disabled]="!selectedUser">Quitar</button>
+      </div>
+      <div *ngIf="selectedUser" style="opacity:.75; font-size:12px; padding-top:6px;">
+        Seleccionado: <strong>{{ selectedUser.name || selectedUser.id }}</strong>
+      </div>
+    </mat-form-field>
+
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <!-- TARJETAS: todo lo del JSON de /sales/summary -->
+  <div style="display:flex; flex-wrap:wrap; gap:14px;" *ngIf="summary">
+
+    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
+      <div style="opacity:.7; font-size:12px;">Franquicia ID</div>
+      <div style="font-weight:700; word-break:break-all;">{{ safeText(summary.franchiseId) }}</div>
+    </div>
+
+    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
+      <div style="opacity:.7; font-size:12px;">Desde</div>
+      <div style="font-size:16px; font-weight:700;">{{ safeText(summary.from) }}</div>
+    </div>
+
+    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
+      <div style="opacity:.7; font-size:12px;">Hasta</div>
+      <div style="font-size:16px; font-weight:700;">{{ safeText(summary.to) }}</div>
+    </div>
+
+    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
+      <div style="opacity:.7; font-size:12px;">sellerId (usuario)</div>
+      <div style="font-weight:700; word-break:break-all;">{{ safeText(summary.sellerId) }}</div>
+    </div>
+
+    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
+      <div style="opacity:.7; font-size:12px;">Número de ventas</div>
+      <div style="font-size:26px; font-weight:800;">{{ summary.salesCount ?? 0 }}</div>
+    </div>
+
+    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
+      <div style="opacity:.7; font-size:12px;">Total vendido</div>
+      <div style="font-size:26px; font-weight:800;">{{ money(summary.totalSold ?? 0) }}</div>
+    </div>
+
+    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
+      <div style="opacity:.7; font-size:12px;">Piezas vendidas</div>
+      <div style="font-size:26px; font-weight:800;">{{ summary.itemsQty ?? 0 }}</div>
+    </div>
+
+  </div>
+
+  <div *ngIf="!summary && !loading" style="opacity:.75; padding:8px 0;">
+    No hay datos para mostrar (o falta seleccionar franquicia).
+  </div>
+
+</div>
+
+<!-- ========================= -->
+<!-- MODAL: seleccionar usuario -->
+<!-- ========================= -->
+<div *ngIf="userModalOpen"
+  style="
+    position:fixed; inset:0; background:rgba(0,0,0,.35);
+    display:flex; align-items:center; justify-content:center;
+    padding:16px; z-index:9999;
+  "
+  (click)="closeUserModal()"
+>
+  <div
+    style="
+      background:white;
+      width:min(720px, 100%);
+      border-radius:16px;
+      padding:16px;
+      box-shadow:0 8px 30px rgba(0,0,0,.18);
+    "
+    (click)="$event.stopPropagation()"
+  >
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <h3 style="margin:0;">Seleccionar usuario</h3>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button mat-stroked-button type="button" (click)="reloadUsers()">Recargar</button>
+        <button mat-stroked-button type="button" (click)="closeUserModal()">Cerrar</button>
+      </div>
+    </div>
+
+    <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+      <mat-form-field appearance="outline" style="flex:1; min-width:260px;">
+        <mat-label>Buscar</mat-label>
+        <input matInput [(ngModel)]="usersSearch" placeholder="Nombre, correo, rol o id..." />
+      </mat-form-field>
+    </div>
+
+    <div *ngIf="usersLoading" style="padding:10px 0; opacity:.8;">
+      Cargando usuarios...
+    </div>
+
+    <div style="margin-top:8px; max-height:420px; overflow:auto; border:1px solid rgba(0,0,0,.08); border-radius:12px;">
+      <div *ngIf="!usersLoading && filteredUsers.length === 0" style="padding:12px; opacity:.7;">
+        No se encontraron usuarios.
+      </div>
+
+      <div *ngFor="let u of filteredUsers"
+        (click)="pickUser(u)"
+        style="
+          padding:12px;
+          display:flex;
+          justify-content:space-between;
+          gap:12px;
+          cursor:pointer;
+          border-bottom:1px solid rgba(0,0,0,.06);
+        "
+        [style.background]="selectedUser?.id === u.id ? 'rgba(0,0,0,.04)' : 'white'"
+      >
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <div style="font-weight:700;">
+            {{ u.name || u.id }}
+          </div>
+          <div style="opacity:.75; font-size:12px;">
+            {{ u.email || '—' }} · {{ u.role || '—' }}
+          </div>
+          <div style="opacity:.65; font-size:11px; font-family:ui-monospace;">
+            {{ u.id }}
+          </div>
+        </div>
+
+        <div style="align-self:center; font-weight:700; opacity:.8;">
+          Seleccionar
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

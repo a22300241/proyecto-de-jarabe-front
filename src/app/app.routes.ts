@@ -55,10 +55,16 @@ export const routes: Routes = [
       {
         path: 'reports/summary',
         loadComponent: () =>
-          import('./features/reports/report-summary/report-summary').then(
-            (m) => m.ReportSummary
-          ),
+          import('./features/reports/reports-page/reports-page')
+            .then(m => m.ReportsPage),
       },
+      {
+        path: 'reports',
+        loadComponent: () =>
+          import('./features/reports/reports-page/reports-page')
+            .then(m => m.ReportsPage),
+      },
+
       {
         path: 'reports/daily-close',
         loadComponent: () =>
