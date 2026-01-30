@@ -1,0 +1,53 @@
+.page {
+  padding: 18px 18px 26px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+.subtitle {
+  opacity: .75;
+  margin-top: 2px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tbl {
+  width: 100%;
+  margin-top: 10px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.actions-cell {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.err {
+  margin-top: 10px;
+  background: #ffd9d9;
+  border: 1px solid rgba(0,0,0,.08);
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.empty {
+  margin-top: 18px;
+  opacity: .7;
+}

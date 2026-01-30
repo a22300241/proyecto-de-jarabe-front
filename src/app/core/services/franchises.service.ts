@@ -1,27 +1,40 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environments.prod';
 import { firstValueFrom } from 'rxjs';
-import { environment } from '../../../environments/environments';
 
-export type FranchiseItem = {
+export interface FranchiseItem {
   id: string;
   name: string;
-  isActive?: boolean;
-};
+  isActive: boolean;
+  createdAt: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class FranchisesService {
-  private http = new HttpClient((window as any).ng?.injector?.get(HttpClient) ?? (null as any));
+  private http = inject(HttpClient);
+  private baseUrl = environment.apiUrl;
 
-  // Si ya tienes HttpClient inyectado normal, usa constructor(http: HttpClient) {}
-  constructor(http: HttpClient) {
-    this.http = http;
+  // ✅ Mantén list() porque ya lo usas en franchises-list.ts
+  public list(): Promise<FranchiseItem[]> {
+    return this.listAll();
   }
 
-  // Ajusta la URL si tu backend usa otra ruta.
-  // La idea: devolver [{id,name}]
-  async listAll(): Promise<FranchiseItem[]> {
-    const url = `${environment.apiUrl}/franchises`;
+  // ✅ Mantén listAll() porque lo usa shell.ts (compatibilidad)
+  public async listAll(): Promise<FranchiseItem[]> {
+    const url = `${this.baseUrl}/franchises`;
     return firstValueFrom(this.http.get<FranchiseItem[]>(url));
+  }
+
+  public getById(franchiseId: string): Promise<FranchiseItem> {
+    return firstValueFrom(
+      this.http.get<FranchiseItem>(`${this.baseUrl}/franchises/${franchiseId}`)
+    );
+  }
+
+  public create(body: { name: string }): Promise<FranchiseItem> {
+    return firstValueFrom(
+      this.http.post<FranchiseItem>(`${this.baseUrl}/franchises`, body)
+    );
   }
 }

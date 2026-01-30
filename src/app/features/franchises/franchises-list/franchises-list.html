@@ -1,1 +1,57 @@
-<p>franchises-list works!</p>
+<div class="page">
+  <div class="head">
+    <div>
+      <div class="title">Franquicias</div>
+      <div class="subtitle">Listado</div>
+    </div>
+
+    <div class="actions">
+      <button mat-stroked-button (click)="openCreate()">
+        <mat-icon>add</mat-icon>
+        Nueva franquicia
+      </button>
+
+      <button mat-stroked-button (click)="onReload()">
+        <mat-icon>refresh</mat-icon>
+        Recargar
+      </button>
+    </div>
+  </div>
+
+  <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
+
+  <div *ngIf="error" class="err">{{ error }}</div>
+
+  <table mat-table [dataSource]="franchises" class="tbl">
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef>Nombre</th>
+      <td mat-cell *matCellDef="let f">{{ f.name }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="isActive">
+      <th mat-header-cell *matHeaderCellDef>Estado</th>
+      <td mat-cell *matCellDef="let f">{{ yesNo(f.isActive) }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="createdAt">
+      <th mat-header-cell *matHeaderCellDef>Creado</th>
+      <td mat-cell *matCellDef="let f">{{ fmtDate(f.createdAt) }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef style="width: 120px;"></th>
+      <td mat-cell *matCellDef="let f" class="actions-cell">
+        <button mat-stroked-button (click)="openView(f)">
+          Ver
+        </button>
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+  </table>
+
+  <div *ngIf="!loading && franchises.length === 0" class="empty">
+    No hay franquicias.
+  </div>
+</div>
