@@ -6,7 +6,7 @@
 
   <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
     <h2 style="margin:0;">Reportes</h2>
-    <button mat-stroked-button (click)="clearFilters()">Limpiar filtros</button>
+    <button mat-stroked-button (click)="clearFilters()">Limpiar</button>
   </div>
 
   <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
@@ -16,9 +16,9 @@
     {{ error }}
   </div>
 
-  <!-- Franquicia activa (solo display) -->
+  <!-- Franquicia seleccionada -->
   <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
-    <mat-form-field appearance="outline" style="min-width:320px;">
+    <mat-form-field appearance="outline" style="min-width:340px;">
       <mat-label>Franquicia seleccionada</mat-label>
       <input matInput [value]="getActiveFranchiseId() || ''" disabled />
       <div style="opacity:.7; font-size:12px; padding-top:6px;">
@@ -27,175 +27,258 @@
     </mat-form-field>
   </div>
 
-  <!-- Filtros: fechas + usuario -->
-  <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+  <!-- Usuario picker -->
+  <div style="display:flex; align-items:center; gap:12px; padding:12px; border:1px solid rgba(0,0,0,.1); border-radius:16px; background:white;">
+    <div style="flex:1;">
+      <div style="font-size:12px; opacity:.7;">Usuario (vendedor) opcional</div>
 
+      <div style="font-weight:700;">
+        {{ selectedUser?.name || '—' }}
+        <span *ngIf="selectedUser" style="font-weight:400; opacity:.7; font-family:ui-monospace;">
+          ({{ selectedUser?.id }})
+        </span>
+      </div>
+    </div>
+
+    <button mat-stroked-button (click)="openUserPicker($event)">Elegir usuario</button>
+    <button mat-button *ngIf="selectedUser" (click)="clearSelectedUser()">Quitar</button>
+  </div>
+
+  <!-- Rango fechas para SUMMARY -->
+  <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
     <mat-form-field appearance="outline">
       <mat-label>Desde</mat-label>
-      <input
-        matInput
-        [matDatepicker]="dpFrom"
-        [(ngModel)]="from"
-        (ngModelChange)="onFromChange($event)"
-      />
+      <input matInput [matDatepicker]="dpFrom" [(ngModel)]="from" (dateChange)="onRangeChanged()" />
       <mat-datepicker-toggle matSuffix [for]="dpFrom"></mat-datepicker-toggle>
       <mat-datepicker #dpFrom></mat-datepicker>
     </mat-form-field>
 
     <mat-form-field appearance="outline">
       <mat-label>Hasta</mat-label>
-      <input
-        matInput
-        [matDatepicker]="dpTo"
-        [(ngModel)]="to"
-        (ngModelChange)="onToChange($event)"
-      />
+      <input matInput [matDatepicker]="dpTo" [(ngModel)]="to" (dateChange)="onRangeChanged()" />
       <mat-datepicker-toggle matSuffix [for]="dpTo"></mat-datepicker-toggle>
       <mat-datepicker #dpTo></mat-datepicker>
     </mat-form-field>
+  </div>
 
-    <mat-form-field appearance="outline" style="min-width:320px;">
-      <mat-label>Usuario (vendedor) opcional</mat-label>
-      <input
-        matInput
-        [value]="selectedUser ? (selectedUser.name || selectedUser.id) : ''"
-        placeholder="Selecciona un usuario"
-        readonly
-      />
-      <div style="display:flex; gap:8px; padding-top:10px; flex-wrap:wrap;">
-        <button mat-stroked-button type="button" (click)="openUserModal()">Elegir usuario</button>
-        <button mat-stroked-button type="button" (click)="clearUser()" [disabled]="!selectedUser">Quitar</button>
+  <!-- Tarjetas SUMMARY -->
+  <div *ngIf="summary as s" style="display:flex; flex-direction:column; gap:10px;">
+    <mat-divider></mat-divider>
+
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Franquicia ID</div>
+        <div style="font-family:ui-monospace; font-weight:800;">
+          {{ s.franchiseId || '—' }}
+        </div>
       </div>
-      <div *ngIf="selectedUser" style="opacity:.75; font-size:12px; padding-top:6px;">
-        Seleccionado: <strong>{{ selectedUser.name || selectedUser.id }}</strong>
+
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Desde</div>
+        <div style="font-weight:800;">
+          {{ s.from || '—' }}
+        </div>
       </div>
+
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Hasta</div>
+        <div style="font-weight:800;">
+          {{ s.to || '—' }}
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">sellerId (usuario)</div>
+        <div style="font-weight:800;">
+          {{ s.sellerId || '—' }}
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Número de ventas</div>
+        <div style="font-size:22px; font-weight:900;">
+          {{ s.salesCount || 0 }}
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Total vendido</div>
+        <div style="font-size:22px; font-weight:900;">
+          {{ money(s.totalSold || 0) }}
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Piezas vendidas</div>
+        <div style="font-size:22px; font-weight:900;">
+          {{ s.itemsQty || 0 }}
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Día para DAILY CLOSE -->
+  <div style="display:flex; flex-direction:column; gap:10px;">
+    <mat-divider></mat-divider>
+
+    <mat-form-field appearance="outline" style="min-width:260px;">
+      <mat-label>Día (para Daily Close)</mat-label>
+      <input matInput [matDatepicker]="dpDayPick" [(ngModel)]="dayPick" (dateChange)="onDayChanged()" />
+      <mat-datepicker-toggle matSuffix [for]="dpDayPick"></mat-datepicker-toggle>
+      <mat-datepicker #dpDayPick></mat-datepicker>
     </mat-form-field>
-
   </div>
 
-  <mat-divider></mat-divider>
+  <!-- Tarjetas DAILY CLOSE -->
+  <div *ngIf="dailyClose as dc" style="display:flex; flex-direction:column; gap:10px;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
 
-  <!-- TARJETAS: todo lo del JSON de /sales/summary -->
-  <div style="display:flex; flex-wrap:wrap; gap:14px;" *ngIf="summary">
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Día</div>
+        <div style="font-size:20px; font-weight:900;">
+          {{ dc.day || '—' }}
+        </div>
+      </div>
 
-    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
-      <div style="opacity:.7; font-size:12px;">Franquicia ID</div>
-      <div style="font-weight:700; word-break:break-all;">{{ safeText(summary.franchiseId) }}</div>
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Ventas completadas</div>
+        <div style="font-size:22px; font-weight:900;">
+          {{ dc.salesCompleted || 0 }}
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Total vendido</div>
+        <div style="font-size:22px; font-weight:900;">
+          {{ money(dc.totalSold || 0) }}
+        </div>
+      </div>
+
+      <div
+        style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white; cursor:pointer;"
+        (click)="openItemsModalDaily()"
+        title="Ver desglose topProducts"
+      >
+        <div style="opacity:.7; font-size:12px;">Piezas vendidas (clic para desglose)</div>
+        <div style="font-size:22px; font-weight:900;">
+          {{ dc.itemsQty || 0 }}
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Cancelaciones</div>
+        <div style="font-size:22px; font-weight:900;">
+          {{ dc.cancelsCount || 0 }}
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Reembolsos</div>
+        <div style="font-size:22px; font-weight:900;">
+          {{ dc.refundsCount || 0 }}
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:12px 14px; background:white;">
+        <div style="opacity:.7; font-size:12px;">Total reembolsado</div>
+        <div style="font-size:22px; font-weight:900;">
+          {{ money(dc.refundsTotal || 0) }}
+        </div>
+      </div>
+
     </div>
-
-    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
-      <div style="opacity:.7; font-size:12px;">Desde</div>
-      <div style="font-size:16px; font-weight:700;">{{ safeText(summary.from) }}</div>
-    </div>
-
-    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
-      <div style="opacity:.7; font-size:12px;">Hasta</div>
-      <div style="font-size:16px; font-weight:700;">{{ safeText(summary.to) }}</div>
-    </div>
-
-    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
-      <div style="opacity:.7; font-size:12px;">sellerId (usuario)</div>
-      <div style="font-weight:700; word-break:break-all;">{{ safeText(summary.sellerId) }}</div>
-    </div>
-
-    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
-      <div style="opacity:.7; font-size:12px;">Número de ventas</div>
-      <div style="font-size:26px; font-weight:800;">{{ summary.salesCount ?? 0 }}</div>
-    </div>
-
-    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
-      <div style="opacity:.7; font-size:12px;">Total vendido</div>
-      <div style="font-size:26px; font-weight:800;">{{ money(summary.totalSold ?? 0) }}</div>
-    </div>
-
-    <div style="border:1px solid rgba(0,0,0,.1); border-radius:16px; padding:14px; min-width:260px; background:white;">
-      <div style="opacity:.7; font-size:12px;">Piezas vendidas</div>
-      <div style="font-size:26px; font-weight:800;">{{ summary.itemsQty ?? 0 }}</div>
-    </div>
-
-  </div>
-
-  <div *ngIf="!summary && !loading" style="opacity:.75; padding:8px 0;">
-    No hay datos para mostrar (o falta seleccionar franquicia).
   </div>
 
 </div>
 
 <!-- ========================= -->
-<!-- MODAL: seleccionar usuario -->
+<!-- MODAL: elegir usuario     -->
 <!-- ========================= -->
 <div *ngIf="userModalOpen"
-  style="
-    position:fixed; inset:0; background:rgba(0,0,0,.35);
-    display:flex; align-items:center; justify-content:center;
-    padding:16px; z-index:9999;
-  "
-  (click)="closeUserModal()"
+  style="position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; padding:16px; z-index:99999;"
+  (click)="closeUserPicker()"
 >
   <div
-    style="
-      background:white;
-      width:min(720px, 100%);
-      border-radius:16px;
-      padding:16px;
-      box-shadow:0 8px 30px rgba(0,0,0,.18);
-    "
+    style="background:white; width:min(720px, 100%); border-radius:16px; padding:16px; box-shadow:0 8px 30px rgba(0,0,0,.18);"
     (click)="$event.stopPropagation()"
   >
     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
       <h3 style="margin:0;">Seleccionar usuario</h3>
-
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button mat-stroked-button type="button" (click)="reloadUsers()">Recargar</button>
-        <button mat-stroked-button type="button" (click)="closeUserModal()">Cerrar</button>
+      <div style="display:flex; gap:10px;">
+        <button mat-stroked-button (click)="reloadUsers()">Recargar</button>
+        <button mat-stroked-button (click)="closeUserPicker()">Cerrar</button>
       </div>
     </div>
 
-    <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
-      <mat-form-field appearance="outline" style="flex:1; min-width:260px;">
-        <mat-label>Buscar</mat-label>
-        <input matInput [(ngModel)]="usersSearch" placeholder="Nombre, correo, rol o id..." />
-      </mat-form-field>
+    <mat-form-field appearance="outline" style="width:100%; margin-top:12px;">
+      <mat-label>Buscar</mat-label>
+      <input matInput [(ngModel)]="usersQuery" placeholder="Nombre, correo, rol..." />
+    </mat-form-field>
+
+    <div *ngIf="usersError"
+      style="background:#ffd9d9; border:1px solid rgba(0,0,0,.08); padding:10px 12px; border-radius:12px; margin-top:10px;">
+      {{ usersError }}
     </div>
 
-    <div *ngIf="usersLoading" style="padding:10px 0; opacity:.8;">
+    <div *ngIf="usersLoading" style="opacity:.7; margin-top:10px;">
       Cargando usuarios...
     </div>
 
-    <div style="margin-top:8px; max-height:420px; overflow:auto; border:1px solid rgba(0,0,0,.08); border-radius:12px;">
-      <div *ngIf="!usersLoading && filteredUsers.length === 0" style="padding:12px; opacity:.7;">
+    <div style="margin-top:12px; max-height:360px; overflow:auto; border:1px solid rgba(0,0,0,.08); border-radius:12px;">
+      <div *ngIf="!usersLoading && usersFiltered.length === 0" style="padding:12px; opacity:.7;">
         No se encontraron usuarios.
       </div>
 
-      <div *ngFor="let u of filteredUsers"
+      <button
+        *ngFor="let u of usersFiltered"
+        type="button"
         (click)="pickUser(u)"
-        style="
-          padding:12px;
-          display:flex;
-          justify-content:space-between;
-          gap:12px;
-          cursor:pointer;
-          border-bottom:1px solid rgba(0,0,0,.06);
-        "
-        [style.background]="selectedUser?.id === u.id ? 'rgba(0,0,0,.04)' : 'white'"
+        style="width:100%; text-align:left; border:0; background:white; padding:12px 12px; cursor:pointer;
+               display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(0,0,0,.06);"
       >
-        <div style="display:flex; flex-direction:column; gap:2px;">
-          <div style="font-weight:700;">
-            {{ u.name || u.id }}
-          </div>
-          <div style="opacity:.75; font-size:12px;">
+        <div>
+          <div style="font-weight:800;">{{ u.name }}</div>
+          <div style="font-size:12px; opacity:.7;">
             {{ u.email || '—' }} · {{ u.role || '—' }}
           </div>
-          <div style="opacity:.65; font-size:11px; font-family:ui-monospace;">
-            {{ u.id }}
-          </div>
         </div>
+        <div style="font-family:ui-monospace; opacity:.7; font-size:12px;">
+          {{ u.id }}
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
 
-        <div style="align-self:center; font-weight:700; opacity:.8;">
-          Seleccionar
-        </div>
-      </div>
+<!-- ========================= -->
+<!-- MODAL: topProducts        -->
+<!-- ========================= -->
+<div *ngIf="itemsModalDaily"
+  style="position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; padding:16px; z-index:99999;"
+  (click)="closeDailyItemsModal()"
+>
+  <div
+    style="background:white; width:min(520px, 100%); border-radius:16px; padding:16px; box-shadow:0 8px 30px rgba(0,0,0,.18);"
+    (click)="$event.stopPropagation()"
+  >
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+      <h3 style="margin:0;">{{ itemsModalDaily.title }}</h3>
+      <button mat-stroked-button (click)="closeDailyItemsModal()">Cerrar</button>
     </div>
 
+    <div style="margin-top:12px; max-height:360px; overflow:auto;">
+      <div *ngIf="itemsModalDaily.items.length === 0" style="opacity:.7;">
+        No hay desglose para este día.
+      </div>
+
+      <div *ngFor="let it of itemsModalDaily.items"
+        style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(0,0,0,.08);"
+      >
+        <div style="font-weight:700;">{{ it.name }}</div>
+        <div style="font-family:ui-monospace; opacity:.85;">{{ it.qty }} pzs</div>
+      </div>
+    </div>
   </div>
 </div>

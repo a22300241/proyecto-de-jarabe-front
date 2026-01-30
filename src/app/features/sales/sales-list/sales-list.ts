@@ -13,7 +13,6 @@ import { SessionStore } from '../../../core/state/session.store';
 
 import { firstValueFrom } from 'rxjs';
 
-
 @Component({
   selector: 'app-sales-list',
   standalone: true,
@@ -39,15 +38,15 @@ export class SalesList implements OnInit {
 
   public sales: SaleListItem[] = [];
 
-  // productId -> productName
+  // ✅ nombres por id (de /products)
   public productNameById: Record<string, string> = {};
+
+  // ✅ nombres por id (sacados desde /sales, incluye inactivos si el backend los manda embebidos)
+  public productNameByIdFromSales: Record<string, string> = {};
 
   public displayedColumns = ['createdAt', 'total', 'status', 'items', 'actions'];
 
-
-
-private salesApi = inject(SalesService);
-
+  private salesApi = inject(SalesService);
 
   async ngOnInit(): Promise<void> {
     await this.load();
@@ -57,13 +56,35 @@ private salesApi = inject(SalesService);
     const user = this.session.user();
     if (!user) return null;
 
-    // ✅ OWNER/PARTNER: usar franquicia activa del SessionStore (la que eliges en el selector)
     if (user.role === 'OWNER' || user.role === 'PARTNER') {
       return this.session.activeFranchiseId() ?? null;
     }
 
-    // ✅ FRANCHISE_OWNER/SELLER: franquicia fija del usuario
     return user.franchiseId ?? null;
+  }
+
+  // ✅ ordenar (más nuevo primero)
+  public get salesSorted(): SaleListItem[] {
+    const arr = Array.isArray(this.sales) ? [...this.sales] : [];
+    arr.sort((a: any, b: any) => {
+      const ta = new Date(a?.createdAt ?? 0).getTime();
+      const tb = new Date(b?.createdAt ?? 0).getTime();
+      return tb - ta;
+    });
+    return arr;
+  }
+
+  public formatSaleDate(iso: any): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return new Intl.DateTimeFormat('es-MX', {
+      year: '2-digit',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(d);
   }
 
   public async load(): Promise<void> {
@@ -74,18 +95,29 @@ private salesApi = inject(SalesService);
     this.cdr.markForCheck();
 
     try {
-      // ✅ 1) Primero ventas (esto NO depende de /products)
+      // ✅ 1) Ventas
       const list = await this.salesService.list({ franchiseId });
       this.sales = Array.isArray(list) ? list : [];
 
-      // ✅ 2) Luego intentamos productos SOLO para nombres (si falla, no rompemos)
+      // ✅ 1.1) Sacar nombres desde las ventas (si el backend manda item.product.name)
+      const fromSales: Record<string, string> = {};
+      for (const s of this.sales as any[]) {
+        const items = s?.items ?? [];
+        for (const it of items) {
+          const pid = it?.productId;
+          const pname = it?.product?.name; // 👈 viene en tu JSON
+          if (pid && pname) fromSales[pid] = pname;
+        }
+      }
+      this.productNameByIdFromSales = fromSales;
+
+      // ✅ 2) Productos (solo para completar nombres si existen)
       try {
         const products: ProductItem[] = await this.productsService.list({ franchiseId });
         const map: Record<string, string> = {};
         for (const p of products) map[p.id] = p.name;
         this.productNameById = map;
       } catch {
-        // si /products falla (403), dejamos map vacío y mostramos id como fallback
         this.productNameById = {};
       }
     } catch (e: any) {
@@ -106,34 +138,43 @@ private salesApi = inject(SalesService);
     return v.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
   }
 
-  public itemLabel(productId: string): string {
-    return this.productNameById[productId] ?? productId;
+  // ✅ Prioridad de nombre:
+  // 1) it.product.name (si viene)
+  // 2) map desde ventas (inactivos incluidos)
+  // 3) map desde /products
+  // 4) productId
+  public itemLabel(it: any): string {
+    const nameFromBackend = it?.product?.name;
+    if (nameFromBackend) return nameFromBackend;
+
+    const productId = it?.productId;
+    if (!productId) return 'Producto';
+
+    return (
+      this.productNameByIdFromSales[productId] ??
+      this.productNameById[productId] ??
+      productId
+    );
   }
-      async cancelSale(r: SaleListItem) {
-  if (r.status !== 'COMPLETED') return;
 
-  const reason = prompt('Motivo de cancelación:');
-  if (!reason || !reason.trim()) return;
+  async cancelSale(r: SaleListItem) {
+    if (r.status !== 'COMPLETED') return;
 
-  this.loading = true;
-  this.error = null;
-  this.cdr.markForCheck();
+    const reason = prompt('Motivo de cancelación:');
+    if (!reason || !reason.trim()) return;
 
-  try {
-    await firstValueFrom(this.salesApi.cancelSale(r.id, reason.trim()));
-
-    // ✅ opción segura: recargar lista completa (evita pelear con tipos)
-    await this.load();
-  } catch (e: any) {
-    this.error = e?.error?.message ?? 'No se pudo cancelar la venta';
-  } finally {
-    this.loading = false;
+    this.loading = true;
+    this.error = null;
     this.cdr.markForCheck();
+
+    try {
+      await firstValueFrom(this.salesApi.cancelSale(r.id, reason.trim()));
+      await this.load();
+    } catch (e: any) {
+      this.error = e?.error?.message ?? 'No se pudo cancelar la venta';
+    } finally {
+      this.loading = false;
+      this.cdr.markForCheck();
+    }
   }
 }
-
-
-}
-
-
-

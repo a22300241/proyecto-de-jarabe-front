@@ -166,7 +166,6 @@ import { Inject } from '@angular/core';
         <mat-label>Nombre</mat-label>
         <input matInput [(ngModel)]="name" placeholder="Ej: Franquicia 3" />
       </mat-form-field>
-      <div class="hint">Se creará con estado Activo por defecto (según backend).</div>
     </div>
 
     <div mat-dialog-actions align="end">

@@ -1,6 +1,47 @@
 .page {
   padding: 18px 18px 26px;
 }
+.tbl {
+  width: 100%;
+  table-layout: fixed; // ✅ evita que la columna de acciones se “mueva”
+}
+
+.tbl .mat-mdc-header-cell,
+.tbl .mat-mdc-cell {
+  vertical-align: middle; // ✅ centra el contenido
+}
+
+/* ✅ Columna actions: ancho fijo y alineación a la derecha */
+.tbl .actions-head,
+.tbl .actions-cell {
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tbl .actions-cell {
+  display: flex;              // ✅ alinea botón perfecto
+  justify-content: flex-end;  // ✅ pegado a la derecha
+  align-items: center;        // ✅ centrado vertical
+  gap: 8px;
+}
+
+/* ✅ Líneas completas: pon el borde en la fila (no en celdas) */
+:host ::ng-deep .tbl .mdc-data-table__row {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+:host ::ng-deep .tbl .mdc-data-table__header-row {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+/* (Opcional) si tenías bordes por celda que cortan la línea, los apagamos */
+:host ::ng-deep .tbl .mdc-data-table__cell,
+:host ::ng-deep .tbl .mdc-data-table__header-cell {
+  border-bottom: none;
+}
+
 
 .head {
   display: flex;
@@ -51,3 +92,4 @@
   margin-top: 18px;
   opacity: .7;
 }
+

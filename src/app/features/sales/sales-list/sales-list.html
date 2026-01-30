@@ -19,10 +19,10 @@
 
   <div class="error" *ngIf="error">{{ error }}</div>
 
-  <table mat-table [dataSource]="sales" class="mat-elevation-z0" *ngIf="!loading">
+  <table mat-table [dataSource]="salesSorted" class="mat-elevation-z0" *ngIf="!loading">
     <ng-container matColumnDef="createdAt">
       <th mat-header-cell *matHeaderCellDef>Fecha</th>
-      <td mat-cell *matCellDef="let r">{{ r.createdAt | date:'short' }}</td>
+      <td mat-cell *matCellDef="let r">{{ r.createdAt | date:'short':'UTC' }}</td>
     </ng-container>
 
     <ng-container matColumnDef="total">
@@ -40,31 +40,28 @@
       <td mat-cell *matCellDef="let r">
         <div *ngIf="r.items?.length; else noItems">
           <div *ngFor="let it of r.items">
-            {{ itemLabel(it.productId) }} — x{{ it.qty }}
+            {{ itemLabel(it) }} — x{{ it.qty }}
           </div>
         </div>
         <ng-template #noItems>—</ng-template>
       </td>
     </ng-container>
-    <td></td>
 
     <ng-container matColumnDef="actions">
-  <th mat-header-cell *matHeaderCellDef>Acciones</th>
-  <td mat-cell *matCellDef="let r">
-    <button
-      mat-stroked-button
-      color="warn"
-      *ngIf="r.status === 'COMPLETED'"
-      (click)="cancelSale(r)"
-    >
-      Cancelar
-    </button>
+      <th mat-header-cell *matHeaderCellDef>Acciones</th>
+      <td mat-cell *matCellDef="let r">
+        <button
+          mat-stroked-button
+          color="warn"
+          *ngIf="r.status === 'COMPLETED'"
+          (click)="cancelSale(r)"
+        >
+          Cancelar
+        </button>
 
-    <span *ngIf="r.status !== 'COMPLETED'">—</span>
-  </td>
-</ng-container>
-
-
+        <span *ngIf="r.status !== 'COMPLETED'">—</span>
+      </td>
+    </ng-container>
 
     <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
