@@ -69,9 +69,28 @@ export class ProductsList {
     'actions',
   ];
 
+  // ✅ CLAVE: para Owner/Master usar franquicia seleccionada (dropdown)
+  // y para Seller usar user.franchiseId
+  private getActiveFranchiseId(): string | null {
+    const s: any = this.session as any;
+
+    // Intentamos varios nombres típicos (sin romper nada si no existen)
+    const selected =
+      s.selectedFranchiseId?.() ??
+      s.activeFranchiseId?.() ??
+      s.franchiseIdSelected?.() ??
+      s.currentFranchiseId?.() ??
+      s.franchiseId?.();
+
+    if (selected) return selected as string;
+
+    // Fallback (Seller normalmente trae franchiseId en el user)
+    return this.session.user()?.franchiseId ?? null;
+  }
+
   constructor() {
     effect(() => {
-      const franchiseId = this.session.user()?.franchiseId ?? null;
+      const franchiseId = this.getActiveFranchiseId();
 
       if (!franchiseId) {
         this.products = [];
@@ -91,7 +110,7 @@ export class ProductsList {
   }
 
   public async load(): Promise<void> {
-    const franchiseId = this.session.user()?.franchiseId ?? null;
+    const franchiseId = this.getActiveFranchiseId();
 
     this.loading = true;
     this.error = null;

@@ -69,7 +69,7 @@ export class ProductsService {
   }
 
   // ✅ CREAR
-  async create(body: { name: string; price: number; stock: number; sku?: string | null }): Promise<ProductItem> {
+  async create(body: { franchiseId: string;name: string; price: number; stock: number; sku?: string | null }): Promise<ProductItem> {
     return await firstValueFrom(
       this.http.post<ProductItem>(`${this.baseUrl}/products`, body)
     );

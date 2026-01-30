@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-
+import { SessionStore } from '../../../core/state/session.store';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -31,6 +31,7 @@ export class ProductCreate implements OnInit {
   private router = inject(Router);
   private productsService = inject(ProductsService);
   private cdr = inject(ChangeDetectorRef);
+  private session = inject(SessionStore);
 
   public loading = false;
   public error: string | null = null;
@@ -46,6 +47,23 @@ export class ProductCreate implements OnInit {
     if (!Number.isFinite(n)) return 0;
     return Math.round(n * 100);
   }
+  // ✅ CLAVE: para Owner/Master usar franquicia seleccionada (dropdown)
+  // y para Seller / FranchiseOwner usar user.franchiseId
+  private getActiveFranchiseId(): string | null {
+    const s: any = this.session as any;
+
+    const selected =
+      s.selectedFranchiseId?.() ??
+      s.activeFranchiseId?.() ??
+      s.franchiseIdSelected?.() ??
+      s.currentFranchiseId?.() ??
+      s.franchiseId?.();
+
+    if (selected) return selected as string;
+
+    return this.session.user()?.franchiseId ?? null;
+  }
+
 
   public async submit(): Promise<void> {
     this.loading = true;
@@ -61,8 +79,21 @@ export class ProductCreate implements OnInit {
       if (!price || price <= 0) throw new Error('Precio inválido');
       if (!Number.isFinite(stock) || stock < 0) throw new Error('Stock inválido');
 
-      // ✅ tu backend toma la franquicia desde req.user
-      await this.productsService.create({ name, price, stock });
+     const franchiseId = this.getActiveFranchiseId();
+
+      if (!franchiseId) {
+        this.error = 'franchiseId es requerido para crear producto';
+        this.cdr?.markForCheck?.();
+        return;
+      }
+
+      await this.productsService.create({
+        franchiseId,
+        name,
+        price,
+        stock,
+      });
+
 
       // ✅ regresar a listado
       await this.router.navigateByUrl('/app/products');
