@@ -16,10 +16,17 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./core/layout/shell/shell').then((m) => m.ShellComponent),
     children: [
+
       {
         path: 'dashboard',
         loadComponent: () =>
           import('./features/dashboard/dashboard').then((m) => m.Dashboard),
+      },
+      {
+        path: 'products/new',
+        loadComponent: () =>
+          import('./features/products/product-create/product-create')
+            .then(m => m.ProductCreate),
       },
 
       {
@@ -97,6 +104,6 @@ export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'users', redirectTo: 'app/users', pathMatch: 'full' },
   { path: 'users/create', redirectTo: 'app/users/create', pathMatch: 'full' },
-  // ✅ wildcard global
+    // ✅ wildcard global
   { path: '**', redirectTo: 'login' },
 ];

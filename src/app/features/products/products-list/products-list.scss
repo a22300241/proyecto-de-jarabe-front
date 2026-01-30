@@ -28,6 +28,15 @@
 .search {
   width: 320px;
 }
+.actions-cell {
+  width: 56px;
+  text-align: right;
+}
+
+mat-menu .danger {
+  color: #b00020;
+}
+
 
 .table-wrap {
   margin-top: 12px;

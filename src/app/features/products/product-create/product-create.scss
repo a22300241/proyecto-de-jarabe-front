@@ -1,0 +1,32 @@
+.page {
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.form {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 240px 160px;
+  gap: 16px;
+  max-width: 900px;
+}
+
+.field {
+  width: 100%;
+}
+
+.error {
+  margin-top: 12px;
+}

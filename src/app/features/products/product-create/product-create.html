@@ -1,0 +1,36 @@
+<div class="page">
+  <div class="header">
+    <h2>Nuevo producto</h2>
+
+    <div class="actions">
+      <button mat-stroked-button (click)="back()" [disabled]="loading">
+        Volver
+      </button>
+
+      <button mat-raised-button color="primary" (click)="submit()" [disabled]="loading">
+        <mat-icon>add</mat-icon>
+        Crear
+      </button>
+    </div>
+  </div>
+
+  <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
+  <div class="error" *ngIf="error">{{ error }}</div>
+
+  <div class="form">
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>Nombre</mat-label>
+      <input matInput [(ngModel)]="name" placeholder="Ej: papas 99" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>Precio (MXN)</mat-label>
+      <input matInput [(ngModel)]="priceMXN" placeholder="Ej: 10 o 10.50" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="field">
+      <mat-label>Stock</mat-label>
+      <input matInput type="number" [(ngModel)]="stock" />
+    </mat-form-field>
+  </div>
+</div>
