@@ -12,6 +12,21 @@ export interface ProductItem {
   isActive: boolean;
   createdAt: string;
 }
+// agrega estos tipos en products.service.ts
+export type ProductUpdateDto = Partial<{
+  name: string;
+  price: number;
+  isActive: boolean;
+}>;
+
+export type ProductRestockDto = { qty: number };
+
+// ✅ AHORA SON OPCIONALES
+export type ProductAdjustDto = {
+  stockDelta?: number;
+  missingDelta?: number;
+  reason?: string;
+};
 
 // ✅ El backend a veces regresa array y a veces { total, items }
 type ProductsApiResponse =
@@ -60,32 +75,47 @@ export class ProductsService {
     );
   }
 
-  // ✅ EDITAR
-  async update(productId: string, body: { name?: string; price?: number; isActive?: boolean }): Promise<Partial<ProductItem>> {
-    return await firstValueFrom(
-      this.http.patch<Partial<ProductItem>>(`${this.baseUrl}/products/${productId}`, body)
-    );
-  }
+  async update(productId: string, body: ProductUpdateDto): Promise<ProductItem> {
+  const res = await firstValueFrom(
+    this.http.patch<ProductItem>(`${this.baseUrl}/products/${productId}`, body)
+  );
+  return res;
+}
 
-  // ✅ RESURTIR
-  async restock(productId: string, body: { qty: number }): Promise<Partial<ProductItem>> {
-    return await firstValueFrom(
-      this.http.patch<Partial<ProductItem>>(`${this.baseUrl}/products/${productId}/restock`, body)
-    );
-  }
+async restock(productId: string, body: ProductRestockDto): Promise<ProductItem> {
+  const res = await firstValueFrom(
+    this.http.patch<ProductItem>(`${this.baseUrl}/products/${productId}/restock`, body)
+  );
+  return res;
+}
 
-  // ✅ AJUSTAR
-  async adjust(productId: string, body: { stockDelta: number; missingDelta: number; reason?: string }): Promise<Partial<ProductItem>> {
-    return await firstValueFrom(
-      this.http.patch<Partial<ProductItem>>(`${this.baseUrl}/products/${productId}/adjust`, body)
-    );
-  }
+// ✅ AJUSTE GENÉRICO (pero con campos opcionales)
+async adjust(productId: string, body: ProductAdjustDto): Promise<ProductItem> {
+  const res = await firstValueFrom(
+    this.http.patch<ProductItem>(`${this.baseUrl}/products/${productId}/adjust`, body)
+  );
+  return res;
+}
 
-  // ✅ ELIMINAR
-  async remove(productId: string): Promise<void> {
-    await firstValueFrom(
-      this.http.delete<void>(`${this.baseUrl}/products/${productId}`)
-    );
-  }
+// ✅ métodos “bonitos” separados (recomendado para tu UI)
+async adjustStock(productId: string, stockDelta: number, reason?: string): Promise<ProductItem> {
+  return this.adjust(productId, { stockDelta, reason });
+}
+
+async markMissing(productId: string, qty: number, reason?: string): Promise<ProductItem> {
+  // faltantes: stock baja y missing sube
+  return this.adjust(productId, {
+    stockDelta: -Math.abs(qty),
+    missingDelta: Math.abs(qty),
+    reason,
+  });
+}
+
+async remove(productId: string): Promise<void> {
+  await firstValueFrom(
+    this.http.delete<void>(`${this.baseUrl}/products/${productId}`)
+  );
+}
+
 
 }

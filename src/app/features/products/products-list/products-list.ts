@@ -26,6 +26,7 @@ import { Router } from '@angular/router';
 import { ProductsService, ProductItem } from '../../../core/services/products.service';
 import { SessionStore } from '../../../core/state/session.store';
 
+
 @Component({
   selector: 'app-products-list',
   standalone: true,
@@ -65,7 +66,7 @@ export class ProductsList {
     'missing',
     'isActive',
     'createdAt',
-    'actions', // ✅ NUEVA
+    'actions',
   ];
 
   constructor() {
@@ -111,10 +112,27 @@ export class ProductsList {
     void this.load();
   }
 
+  public goNew(): void {
+    void this.router.navigateByUrl('/app/products/new');
+  }
+
+  public yesNo(v: boolean): string {
+    return v ? 'Activo' : 'Inactivo';
+  }
+
+  public fmtDate(iso: string): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? iso : d.toLocaleString('es-MX');
+  }
+
   // =========================
   // ACCIONES (menú)
   // =========================
+
   public openEdit(p: ProductItem): void {
+    this.error = null;
+
     const ref = this.dialog.open(ProductEditDialog, {
       width: '420px',
       data: { p },
@@ -130,15 +148,14 @@ export class ProductsList {
 
         const updated = await this.productsService.update(p.id, result);
 
-        // update local
+        // MERGE local
         const idx = this.products.findIndex(x => x.id === p.id);
-          if (idx >= 0) {
-            this.products[idx] = { ...this.products[idx], ...updated };
-            this.products = [...this.products];
-          }
-          this.cdr.markForCheck();
-          await this.load();          // ✅ agrega esto
-          this.cdr.markForCheck();
+        if (idx >= 0) {
+          this.products[idx] = { ...this.products[idx], ...updated };
+          this.products = [...this.products];
+        }
+
+        await this.load(); // para refrescar (backend manda campos completos)
       } catch (e: any) {
         this.error = e?.error?.message ?? 'No se pudo editar el producto';
       } finally {
@@ -149,6 +166,8 @@ export class ProductsList {
   }
 
   public openRestock(p: ProductItem): void {
+    this.error = null;
+
     const ref = this.dialog.open(ProductRestockDialog, {
       width: '380px',
       data: { p },
@@ -164,15 +183,14 @@ export class ProductsList {
 
         const updated = await this.productsService.restock(p.id, { qty: result.qty });
 
-       const idx = this.products.findIndex(x => x.id === p.id);
+        // MERGE local
+        const idx = this.products.findIndex(x => x.id === p.id);
         if (idx >= 0) {
           this.products[idx] = { ...this.products[idx], ...updated };
           this.products = [...this.products];
         }
-        this.cdr.markForCheck();
-        await this.load();          // ✅ agrega esto
-        this.cdr.markForCheck();
 
+        await this.load();
       } catch (e: any) {
         this.error = e?.error?.message ?? 'No se pudo resurtir';
       } finally {
@@ -182,8 +200,11 @@ export class ProductsList {
     });
   }
 
-  public openAdjust(p: ProductItem): void {
-    const ref = this.dialog.open(ProductAdjustDialog, {
+  // ✅ NUEVO: Ajuste manual de stock (+ o -)
+  public openStockAdjust(p: ProductItem): void {
+    this.error = null;
+
+    const ref = this.dialog.open(ProductStockAdjustDialog, {
       width: '420px',
       data: { p },
     });
@@ -196,19 +217,22 @@ export class ProductsList {
         this.error = null;
         this.cdr.markForCheck();
 
-        const updated = await this.productsService.adjust(p.id, result);
+        // solo stockDelta (puede ser + o -)
+        const updated = await this.productsService.adjustStock(
+          p.id,
+          result.stockDelta,
+          result.reason
+        );
 
         const idx = this.products.findIndex(x => x.id === p.id);
         if (idx >= 0) {
           this.products[idx] = { ...this.products[idx], ...updated };
           this.products = [...this.products];
         }
-        await this.load();          // ✅ agrega esto
-        this.cdr.markForCheck();
-        this.cdr.markForCheck();
 
+        await this.load();
       } catch (e: any) {
-        this.error = e?.error?.message ?? 'No se pudo ajustar inventario';
+        this.error = e?.error?.message ?? 'No se pudo ajustar stock';
       } finally {
         this.loading = false;
         this.cdr.markForCheck();
@@ -216,7 +240,59 @@ export class ProductsList {
     });
   }
 
+  // ✅ NUEVO: Registrar faltantes (solo qty) -> manda stockDelta NEGATIVO y missingDelta POSITIVO
+  public openMissing(p: ProductItem): void {
+    this.error = null;
+
+    const ref = this.dialog.open(ProductMissingDialog, {
+      width: '420px',
+      data: { p },
+    });
+
+    ref.afterClosed().subscribe(async (result) => {
+      if (!result) return;
+
+      try {
+        this.loading = true;
+        this.error = null;
+        this.cdr.markForCheck();
+
+        const qty = Number(result.qty ?? 0);
+        const updated = await this.productsService.markMissing(
+          p.id,
+          result.qty,
+          result.reason
+        );
+
+        // ✅ Esto es lo correcto para faltantes:
+        // - baja stock (stockDelta negativo)
+        // - sube missing (missingDelta positivo)
+        const payload = {
+          stockDelta: -Math.abs(qty),
+          missingDelta: Math.abs(qty),
+          reason: result.reason,
+        };
+
+        const idx = this.products.findIndex(x => x.id === p.id);
+        if (idx >= 0) {
+          this.products[idx] = { ...this.products[idx], ...updated };
+          this.products = [...this.products];
+        }
+
+        await this.load();
+      } catch (e: any) {
+        this.error = e?.error?.message ?? 'No se pudo registrar faltante';
+      } finally {
+        this.loading = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  // ✅ CAMBIO: "Eliminar" ahora desactiva (isActive=false) usando PATCH update
   public confirmDelete(p: ProductItem): void {
+    this.error = null;
+
     const ref = this.dialog.open(ConfirmDeleteDialog, {
       width: '420px',
       data: { name: p.name },
@@ -230,9 +306,16 @@ export class ProductsList {
         this.error = null;
         this.cdr.markForCheck();
 
-        await this.productsService.remove(p.id);
+        // ✅ en vez de DELETE, hacemos "eliminar" = desactivar
+        const updated = await this.productsService.update(p.id, { isActive: false });
 
-        this.products = this.products.filter(x => x.id !== p.id);
+        const idx = this.products.findIndex(x => x.id === p.id);
+        if (idx >= 0) {
+          this.products[idx] = { ...this.products[idx], ...updated };
+          this.products = [...this.products];
+        }
+
+        await this.load();
       } catch (e: any) {
         this.error = e?.error?.message ?? 'No se pudo eliminar';
       } finally {
@@ -241,33 +324,27 @@ export class ProductsList {
       }
     });
   }
-public goNew(): void {
-  void this.router.navigateByUrl('/app/products/new');
-}
-
-public yesNo(v: boolean): string {
-  return v ? 'Activo' : 'Inactivo';
-}
-
-public fmtDate(iso: string): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return isNaN(d.getTime()) ? iso : d.toLocaleString('es-MX');
-}
-
-
 }
 
 /* =========================================================
-   DIALOGOS (standalone) - todo aquí mismo para no hacer 10 archivos
+   DIALOGOS (standalone)
 ========================================================= */
 
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Inject } from '@angular/core';
 
+// ✅ EDITAR: quitamos el switch "Activo" y su lógica (mínimo cambio)
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule, MatSlideToggleModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatIconModule,
+    // MatSlideToggleModule  ❌ ya no se usa en editar
+  ],
   template: `
     <h2 mat-dialog-title>Editar producto</h2>
 
@@ -281,8 +358,6 @@ import { Inject } from '@angular/core';
         <mat-label>Precio (MXN)</mat-label>
         <input matInput [(ngModel)]="priceMXN" placeholder="Ej: 18 o 18.50" />
       </mat-form-field>
-
-      <mat-slide-toggle [(ngModel)]="isActive">Activo</mat-slide-toggle>
     </div>
 
     <div mat-dialog-actions align="end">
@@ -298,7 +373,6 @@ import { Inject } from '@angular/core';
 class ProductEditDialog {
   public name = '';
   public priceMXN = '';
-  public isActive = true;
 
   constructor(
     public ref: MatDialogRef<ProductEditDialog>,
@@ -306,7 +380,6 @@ class ProductEditDialog {
   ) {
     this.name = data.p.name ?? '';
     this.priceMXN = ((data.p.price ?? 0) / 100).toString();
-    this.isActive = !!data.p.isActive;
   }
 
   private toCents(value: string): number {
@@ -321,8 +394,8 @@ class ProductEditDialog {
 
     if (!name) return;
 
-    // price puede ser 0 si no lo quiere cambiar: aquí lo mandamos siempre
-    this.ref.close({ name, price, isActive: this.isActive });
+    // ✅ ya NO mandamos isActive desde editar
+    this.ref.close({ name, price });
   }
 }
 
@@ -367,28 +440,24 @@ class ProductRestockDialog {
   }
 }
 
+// ✅ NUEVO: Ajustar STOCK manual (+ o -)
 @Component({
   standalone: true,
   imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule],
   template: `
-    <h2 mat-dialog-title>Ajustar inventario</h2>
+    <h2 mat-dialog-title>Ajustar stock</h2>
 
     <div mat-dialog-content class="dlg">
       <div class="muted">{{ data.p.name }}</div>
 
       <mat-form-field appearance="outline" class="field">
-        <mat-label>stockDelta</mat-label>
+        <mat-label>stockDelta (puede ser + o -)</mat-label>
         <input matInput type="number" [(ngModel)]="stockDelta" />
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="field">
-        <mat-label>missingDelta</mat-label>
-        <input matInput type="number" [(ngModel)]="missingDelta" />
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="field">
         <mat-label>Motivo</mat-label>
-        <input matInput [(ngModel)]="reason" placeholder="Caducado / roto" />
+        <input matInput [(ngModel)]="reason" placeholder="Inventario / corrección" />
       </mat-form-field>
     </div>
 
@@ -403,29 +472,82 @@ class ProductRestockDialog {
     .muted { opacity:.75; }
   `]
 })
-class ProductAdjustDialog {
+class ProductStockAdjustDialog {
   public stockDelta = 0;
-  public missingDelta = 0;
   public reason = '';
 
   constructor(
-    public ref: MatDialogRef<ProductAdjustDialog>,
+    public ref: MatDialogRef<ProductStockAdjustDialog>,
     @Inject(MAT_DIALOG_DATA) public data: { p: ProductItem }
   ) {}
 
   save(): void {
     const s = Number(this.stockDelta ?? 0);
-    const m = Number(this.missingDelta ?? 0);
-    if (!Number.isFinite(s) || !Number.isFinite(m)) return;
-
+    if (!Number.isFinite(s) || s === 0) return;
     this.ref.close({
       stockDelta: s,
-      missingDelta: m,
       reason: (this.reason ?? '').trim() || undefined,
     });
   }
 }
 
+// ✅ NUEVO: Registrar FALTANTES (qty) -> stockDelta=-qty, missingDelta=+qty
+@Component({
+  standalone: true,
+  imports: [CommonModule, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule],
+  template: `
+    <h2 mat-dialog-title>Registrar faltantes</h2>
+
+    <div mat-dialog-content class="dlg">
+      <div class="muted">{{ data.p.name }}</div>
+
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>Cantidad faltante</mat-label>
+        <input matInput type="number" [(ngModel)]="qty" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>Motivo</mat-label>
+        <input matInput [(ngModel)]="reason" placeholder="Caducado / roto / merma" />
+      </mat-form-field>
+
+      <div class="hint">
+        Esto hará: <b>stock -= qty</b> y <b>faltantes += qty</b>.
+      </div>
+    </div>
+
+    <div mat-dialog-actions align="end">
+      <button mat-button (click)="ref.close(null)">Cancelar</button>
+      <button mat-raised-button color="primary" (click)="save()">Aplicar</button>
+    </div>
+  `,
+  styles: [`
+    .dlg { display:flex; flex-direction:column; gap:12px; padding-top:8px; }
+    .field { width:100%; }
+    .muted { opacity:.75; }
+    .hint { opacity:.8; font-size: 12px; }
+  `]
+})
+class ProductMissingDialog {
+  public qty = 1;
+  public reason = '';
+
+  constructor(
+    public ref: MatDialogRef<ProductMissingDialog>,
+    @Inject(MAT_DIALOG_DATA) public data: { p: ProductItem }
+  ) {}
+
+  save(): void {
+    const q = Number(this.qty ?? 0);
+    if (!Number.isFinite(q) || q <= 0) return;
+    this.ref.close({
+      qty: q,
+      reason: (this.reason ?? '').trim() || undefined,
+    });
+  }
+}
+
+// ✅ "Eliminar" (pero realmente desactiva). Tú pediste que se llame eliminar.
 @Component({
   standalone: true,
   imports: [CommonModule, MatButtonModule],
@@ -434,7 +556,6 @@ class ProductAdjustDialog {
 
     <div mat-dialog-content>
       ¿Seguro que quieres eliminar <b>{{ data.name }}</b>?
-      <div class="muted">Esto lo borra de la base de datos.</div>
     </div>
 
     <div mat-dialog-actions align="end">
@@ -452,153 +573,3 @@ class ConfirmDeleteDialog {
     @Inject(MAT_DIALOG_DATA) public data: { name: string }
   ) {}
 }
-
-
-
-
-
-/* import { CommonModule } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  effect,
-  inject,
-} from '@angular/core';
-
-import { RouterModule } from '@angular/router'; // ✅ agrega esto
-import { MatButtonModule } from '@angular/material/button';
-
-import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule } from '@angular/material/table';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-
-
-import { MatMenuModule } from '@angular/material/menu';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-
-
-import { FormsModule } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-
-import { Router } from '@angular/router';
-import { ProductsService, ProductItem } from '../../../core/services/products.service';
-import { SessionStore } from '../../../core/state/session.store';
-
-@Component({
-  selector: 'app-products-list',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule, // ✅ agrega esto
-    MatButtonModule,
-    MatIconModule,
-    MatTableModule,
-    MatProgressBarModule,
-    MatMenuModule,
-    MatDividerModule,
-    MatDialogModule,
-  ],
-  templateUrl: './products-list.html',
-  styleUrl: './products-list.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-})
-export class ProductsList {
-  private productsService = inject(ProductsService);
-  private session = inject(SessionStore);
-  private cdr = inject(ChangeDetectorRef);
-  private router = inject(Router);
-  public loading = false;
-  public error: string | null = null;
-
-  public products: ProductItem[] = [];
-
-  public displayedColumns: string[] = [
-    'name',
-    'sku',
-    'price',
-    'stock',
-    'missing',
-    'isActive',
-    'createdAt',
-  ];
-
-  constructor() {
-    // ✅ CADA VEZ que cambia la franquicia del SessionStore => recarga productos
-    effect(() => {
-      const u = this.session.user();
-      const franchiseId = this.session.user()?.franchiseId ?? null;
-
-      // Owner/Partner: si todavía no selecciona franquicia, no consultamos
-      if (!franchiseId) {
-        this.products = [];
-        this.error = null;
-        this.loading = false;
-        this.cdr.markForCheck();
-        return;
-      }
-
-      // carga automática
-      void this.load();
-    });
-  }
-  public goNew(): void {
-     console.log('CLICK NUEVO'); // ✅
-    void this.router.navigateByUrl('/app/products/new');
-  }
-  public async load(): Promise<void> {
-    const franchiseId = this.session.user()?.franchiseId ?? null;
-
-    if (!franchiseId) {
-      this.products = [];
-      this.error = null;
-      this.loading = false;
-      this.cdr.markForCheck();
-      return;
-    }
-
-    this.loading = true;
-    this.error = null;
-    this.cdr.markForCheck();
-
-    try {
-      const list = await this.productsService.list({ franchiseId });
-      this.products = Array.isArray(list) ? list : [];
-    } catch (e: any) {
-      this.products = [];
-      this.error = e?.message ?? 'No se pudo cargar productos';
-    } finally {
-      this.loading = false;
-      this.cdr.markForCheck();
-    }
-  }
-
-  // Botón "Recargar" (si lo tienes en HTML)
-  public onReload(): void {
-    void this.load();
-  }
-
-  // Botón "Nuevo" (si todavía no tienes modal, no hacemos nada para no romper)
-  public onNew(): void {
-    // Aquí luego conectamos el alta de producto si lo necesitas
-  }
-
-  public money(cents: number): string {
-    const v = (cents ?? 0) / 100;
-    return v.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
-  }
-
-  public yesNo(v: boolean): string {
-    return v ? 'Activo' : 'Inactivo';
-  }
-
-  public fmtDate(iso: string): string {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    return isNaN(d.getTime()) ? iso : d.toLocaleString('es-MX');
-  }
-}
- */
