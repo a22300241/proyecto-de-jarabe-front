@@ -34,14 +34,19 @@ export class SalesService {
 
   // ✅ OJO: el backend usa req.user.franchiseId
   // ✅ NO mandar franchiseId para que NO truene con "should not exist"
-  async createSale(body: {
-  cardNumber: string;
-  items: { productId: string; qty: number }[];
-}): Promise<any> {
-  return await firstValueFrom(
-    this.http.post(`${this.baseUrl}/sales`, body)
-  );
-}
+    createSale(
+      body: {
+        cardNumber: string;
+        items: { productId: string; qty: number }[];
+      },
+      params?: { franchiseId?: string }
+    ) {
+      return this.http.post(`${this.baseUrl}/sales`, body, {
+        params: params?.franchiseId ? { franchiseId: params.franchiseId } : {},
+      });
+    }
+
+
  getAll(franchiseId?: string): Observable<any[]> {
     return this.http.get<any[]>(`${this.baseUrl}/sales`, {
       params: franchiseId ? { franchiseId } : {},

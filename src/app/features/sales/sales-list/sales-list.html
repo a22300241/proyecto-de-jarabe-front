@@ -22,7 +22,8 @@
   <table mat-table [dataSource]="salesSorted" class="mat-elevation-z0" *ngIf="!loading">
     <ng-container matColumnDef="createdAt">
       <th mat-header-cell *matHeaderCellDef>Fecha</th>
-      <td mat-cell *matCellDef="let r">{{ r.createdAt | date:'short':'UTC' }}</td>
+      <td mat-cell *matCellDef="let r">{{ r.createdAt | date:'short':'GMT-0600' }}</td>
+
     </ng-container>
 
     <ng-container matColumnDef="total">
