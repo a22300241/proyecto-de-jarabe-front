@@ -47,6 +47,7 @@ export class FranchisesList {
   public loading = false;
   public error: string | null = null;
   public franchises: FranchiseItem[] = [];
+  private franchisesApi = inject(FranchisesService);
 
   public displayedColumns: string[] = [
     'name',
@@ -145,6 +146,57 @@ export class FranchisesList {
       }
     });
   }
+  async toggleActive(f: any) {
+  const ok = confirm(
+    f.isActive
+      ? `¿Desactivar la franquicia "${f.name}"?`
+      : `¿Activar la franquicia "${f.name}"?`
+  );
+  if (!ok) return;
+
+  this.loading = true;
+  this.error = null;
+  this.cdr.markForCheck();
+
+  try {
+    if (f.isActive) {
+      await this.franchisesApi.deactivate(f.id).toPromise();
+    } else {
+      await this.franchisesApi.activate(f.id).toPromise();
+    }
+
+    await this.load();
+  } catch (e: any) {
+    this.error = e?.error?.message ?? 'No se pudo cambiar el estado';
+  } finally {
+    this.loading = false;
+    this.cdr.markForCheck();
+  }
+}
+
+async deleteFranchise(f: any, force: boolean) {
+  const ok = confirm(
+    force
+      ? `⚠️ ELIMINAR FORCE\nEsto borrará TODO.\n¿Continuar?`
+      : `¿Eliminar la franquicia "${f.name}"?`
+  );
+  if (!ok) return;
+
+  this.loading = true;
+  this.error = null;
+  this.cdr.markForCheck();
+
+  try {
+    await this.franchisesApi.delete(f.id, force).toPromise();
+    await this.load();
+  } catch (e: any) {
+    this.error = e?.error?.message ?? 'No se pudo eliminar la franquicia';
+  } finally {
+    this.loading = false;
+    this.cdr.markForCheck();
+  }
+}
+
 }
 
 /* =========================================================

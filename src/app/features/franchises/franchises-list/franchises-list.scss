@@ -93,3 +93,18 @@
   opacity: .7;
 }
 
+.tbl .actions-head,
+.tbl .actions-cell {
+  width: 420px;
+  min-width: 420px;
+  max-width: 420px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tbl .actions-cell {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}

@@ -37,4 +37,26 @@ export class FranchisesService {
       this.http.post<FranchiseItem>(`${this.baseUrl}/franchises`, body)
     );
   }
+  activate(franchiseId: string) {
+  return this.http.patch(
+    `${this.baseUrl}/franchises/${franchiseId}/activate`,
+    {}
+  );
+}
+
+deactivate(franchiseId: string) {
+  return this.http.patch(
+    `${this.baseUrl}/franchises/${franchiseId}/deactivate`,
+    {}
+  );
+}
+
+delete(franchiseId: string, force = false) {
+  const url = force
+    ? `${this.baseUrl}/franchises/${franchiseId}?force=true`
+    : `${this.baseUrl}/franchises/${franchiseId}`;
+
+  return this.http.delete(url);
+}
+
 }
