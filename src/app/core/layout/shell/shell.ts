@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy,effect,ChangeDetectorRef, Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
@@ -12,6 +13,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { SessionStore } from '../../state/session.store'; // ✅ AJUSTA si tu ruta cambia
 import { PermissionsService } from '../../services/permissions.service'; // ✅ AJUSTA si tu ruta cambia
 import { FranchisesService } from '../../services/franchises.service'; // ✅ AJUSTA si tu ruta cambia
+import { environment } from '../../../../environments/environments';
+import { firstValueFrom } from 'rxjs';
 
 type FranchiseItem = { id: string; name?: string | null };
 
@@ -35,6 +38,9 @@ type FranchiseItem = { id: string; name?: string | null };
 export class ShellComponent {
   private router = inject(Router);
   private session = inject(SessionStore);
+  private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
+
 
   // ✅ lo pide el HTML (perm.can('...'))
   public perm = inject(PermissionsService);
@@ -50,7 +56,26 @@ export class ShellComponent {
 
   constructor() {
     // carga franquicias cuando sea necesario
-    this.loadFranchisesIfNeeded();
+    void this.loadFranchisesIfNeeded();
+    effect(() => {
+      // dispara cuando cambie el usuario logueado
+      const user = this.session.user();
+
+      // si no hay usuario, limpia
+      if (!user) {
+        this.globalPartners = [];
+        this.cdr.markForCheck();
+        return;
+      }
+
+      // si es super, carga una vez
+      if (this.isSuper()) {
+        void this.loadGlobalPartners();
+      } else {
+        this.globalPartners = [];
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   // ✅ lo pide el HTML
@@ -69,6 +94,53 @@ export class ShellComponent {
     const r = this.session.user()?.role ?? null;
     return r === 'OWNER' || r === 'PARTNER';
   }
+  public globalPartners: Array<{ id: string; name: string; email?: string; role?: string }> = [];
+  public globalPartnersLoading = false;
+  public globalPartnersError: string | null = null;
+
+  public isSuper = computed(() => {
+    const r = this.session.user()?.role;
+    return r === 'OWNER' || r === 'PARTNER';
+  });
+
+
+
+
+
+  public async loadGlobalPartners(): Promise<void> {
+    if (!this.isSuper()) {
+      this.globalPartners = [];
+      return;
+    }
+
+    this.globalPartnersLoading = true;
+    this.globalPartnersError = null;
+
+    try {
+      const url = `${environment.apiUrl}/users/global-partners`;
+      const res = await firstValueFrom(this.http.get<any[]>(url));
+
+      this.globalPartners = (Array.isArray(res) ? res : []).map(u => ({
+        id: String(u?.id ?? ''),
+        name: String(u?.name ?? u?.email ?? 'Usuario'),
+        email: u?.email ?? '',
+        role: u?.role ?? '',
+      })).filter(u => !!u.id);
+
+    } catch (e: any) {
+      this.globalPartners = [];
+      this.globalPartnersError = e?.error?.message ?? e?.message ?? 'No se pudieron cargar socios globales';
+    } finally {
+      this.globalPartnersLoading = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+
+
+
+
+
 
   // ✅ lo pide el HTML (label en el selector)
   public franchiseLabel(f: FranchiseItem) {

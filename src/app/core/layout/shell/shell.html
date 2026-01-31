@@ -62,6 +62,24 @@
         <mat-icon matListItemIcon>store</mat-icon>
         <span matListItemTitle>Franquicias</span>
       </button>
+
+
+      <button
+        mat-list-item
+        type="button"
+        (click)="go('/app/global-users')"
+        *ngIf="isSuper()"
+      >
+        <mat-icon matListItemIcon>groups</mat-icon>
+        <span matListItemTitle>Ver usuarios globales</span>
+      </button>
+
+
+
+
+
+
+
     </mat-nav-list>
   </mat-sidenav>
 

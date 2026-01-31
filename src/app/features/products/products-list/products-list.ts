@@ -219,45 +219,7 @@ export class ProductsList {
     });
   }
 
-  // ✅ NUEVO: Ajuste manual de stock (+ o -)
-  public openStockAdjust(p: ProductItem): void {
-    this.error = null;
-
-    const ref = this.dialog.open(ProductStockAdjustDialog, {
-      width: '420px',
-      data: { p },
-    });
-
-    ref.afterClosed().subscribe(async (result) => {
-      if (!result) return;
-
-      try {
-        this.loading = true;
-        this.error = null;
-        this.cdr.markForCheck();
-
-        // solo stockDelta (puede ser + o -)
-        const updated = await this.productsService.adjustStock(
-          p.id,
-          result.stockDelta,
-          result.reason
-        );
-
-        const idx = this.products.findIndex(x => x.id === p.id);
-        if (idx >= 0) {
-          this.products[idx] = { ...this.products[idx], ...updated };
-          this.products = [...this.products];
-        }
-
-        await this.load();
-      } catch (e: any) {
-        this.error = e?.error?.message ?? 'No se pudo ajustar stock';
-      } finally {
-        this.loading = false;
-        this.cdr.markForCheck();
-      }
-    });
-  }
+  
 
   // ✅ NUEVO: Registrar faltantes (solo qty) -> manda stockDelta NEGATIVO y missingDelta POSITIVO
   public openMissing(p: ProductItem): void {

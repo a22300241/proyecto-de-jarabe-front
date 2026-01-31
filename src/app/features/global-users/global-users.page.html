@@ -1,0 +1,32 @@
+<div class="page-head">
+  <h1>Usuarios globales</h1>
+
+  <div class="actions">
+    <button class="btn" type="button" (click)="reload()">Recargar</button>
+  </div>
+</div>
+
+<div class="card">
+  <div *ngIf="loading">Cargando...</div>
+  <div class="error" *ngIf="error">{{ error }}</div>
+
+  <table *ngIf="!loading && !error" class="table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Correo</th>
+        <th>Rol</th>
+        <th>Estatus</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr *ngFor="let u of users">
+        <td>{{ u.name }}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.role }}</td>
+        <td>{{ u.isActive ? 'ACTIVO' : 'INACTIVO' }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

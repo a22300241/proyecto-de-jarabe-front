@@ -86,6 +86,11 @@ export const routes: Routes = [
           import('./features/users/users-list/users-list').then((m) => m.UsersList),
       },
       {
+        path: 'global-users',
+        loadComponent: () =>
+          import('./features/global-users/global-users.page').then(m => m.GlobalUsersPage),
+      },
+      {
         path: 'users/create',
         canActivate: [authGuard],
         data: { roles: ['OWNER','PARTNER','FRANCHISE_OWNER'] },
