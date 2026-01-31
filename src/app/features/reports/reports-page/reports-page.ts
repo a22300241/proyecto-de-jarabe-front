@@ -361,4 +361,6 @@ export class ReportsPage {
     this.cdr.markForCheck();
     void this.refreshSummaryAuto();
   }
+
+  
 }
