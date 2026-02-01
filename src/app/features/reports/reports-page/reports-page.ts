@@ -59,7 +59,6 @@ export class ReportsPage {
   private reports = inject(ReportsService);
   private session = inject(SessionStore);
   private cdr = inject(ChangeDetectorRef);
-
   // ✅ http directo para traer usuarios (evita depender de otro service)
   private http = inject(HttpClient);
   private apiUrl = environment.apiUrl;
@@ -179,31 +178,64 @@ export class ReportsPage {
   // FETCH SUMMARY
   // =========================
   public async refreshSummaryAuto(): Promise<void> {
-    this.error = null;
+  this.error = null;
 
-    const franchiseId = this.getActiveFranchiseId();
-    if (!franchiseId) return;
+  const franchiseId = this.getActiveFranchiseId();
+  if (!franchiseId) return;
 
-    try {
-      this.markLoading(true);
+  try {
+    this.markLoading(true);
 
-      // ✅ backend tuyo “no respeta” ISO, así que mandamos YYYY-MM-DD (como Postman)
-      const from = this.toYMD(this.from);
-      const to = this.toYMD(this.to);
+    // ✅ rango LOCAL con offset, y "to" EXCLUSIVO (como tu Postman)
+    const fromISO = this.from ? this.isoLocalStart(this.from) : undefined;
+    const toISO = this.to ? this.isoLocalNextDayStart(this.to) : undefined;
 
-      this.summary = await this.reports.salesSummary({
-        franchiseId,
-        from: from,
-        to: to,
-        sellerId: this.selectedUser?.id || undefined,
-      });
-    } catch (e: any) {
-      this.summary = null;
-      this.error = e?.error?.message ?? e?.message ?? 'No se pudo cargar summary';
-    } finally {
-      this.markLoading(false);
-    }
+    this.summary = await this.reports.salesSummary({
+      franchiseId,
+      from: fromISO,
+      to: toISO,
+      sellerId: this.selectedUser?.id || undefined,
+    });
+  } catch (e: any) {
+    this.summary = null;
+    this.error = e?.error?.message ?? e?.message ?? 'No se pudo cargar summary';
+  } finally {
+    this.markLoading(false);
   }
+}
+private isoLocalStart(d: Date): string {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return this.toIsoWithOffset(x);
+}
+
+// ✅ "to" EXCLUSIVO: inicio del día siguiente 00:00:00
+private isoLocalNextDayStart(d: Date): string {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() + 1);
+  return this.toIsoWithOffset(x);
+}
+
+private toIsoWithOffset(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  const ss = pad(date.getSeconds());
+
+  const offsetMin = -date.getTimezoneOffset(); // para -06:00 en MX
+  const sign = offsetMin >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMin);
+  const offH = pad(Math.floor(abs / 60));
+  const offM = pad(abs % 60);
+
+  return `${y}-${m}-${d}T${hh}:${mm}:${ss}${sign}${offH}:${offM}`;
+}
+
 
   // =========================
   // FETCH DAILY CLOSE

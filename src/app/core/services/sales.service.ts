@@ -3,6 +3,38 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environments.prod';
+function isDateOnly(s?: string) {
+  return !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+/**
+ * ✅ Si llega "YYYY-MM-DD" lo crea en LOCAL TIME (no UTC).
+ * Si llega ISO con hora, usa Date normal.
+ */
+function parseDateSmart(s?: string): Date | null {
+  if (!s) return null;
+
+  if (isDateOnly(s)) {
+    const [y, m, d] = s.split('-').map(Number);
+    // 👇 esto crea fecha LOCAL a las 00:00
+    return new Date(y, m - 1, d, 0, 0, 0, 0);
+  }
+
+  const dt = new Date(s);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+
+function dayStart(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function dayEnd(d: Date) {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
 
 export interface SaleListItem {
   id: string;
@@ -59,5 +91,7 @@ export class SalesService {
       { reason }
     );
   }
+
+  
 
 }

@@ -10,6 +10,8 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { SessionStore } from '../../../core/state/session.store';
 
+
+
 type SalesSummaryResponse = {
   franchiseId: string | null;
   from: string;
@@ -37,6 +39,9 @@ export class ReportSummary implements OnInit {
   private http = inject(HttpClient);
   private session = inject(SessionStore);
   private cdr = inject(ChangeDetectorRef);
+  public fromDate: Date | null = null;
+  public toDate: Date | null = null;
+  public sellerId: string | null = null; // opcional si luego filtras por vendedor
 
   private baseUrl = 'http://localhost:3000';
 
@@ -63,8 +68,6 @@ export class ReportSummary implements OnInit {
 
   public async load(): Promise<void> {
     const user = this.session.user();
-
-    // ✅ Si no hay sesión, NO navegamos, solo error
     if (!user) {
       this.data = null;
       this.error = 'No hay sesión activa';
@@ -73,8 +76,6 @@ export class ReportSummary implements OnInit {
 
     const franchiseId = this.getFranchiseId();
 
-    // ✅ Si es OWNER/PARTNER y todavía no eligió franquicia, no pegamos al backend
-    // (esto evita 401/403 que luego te tumba la sesión por el refreshInterceptor)
     if ((user.role === 'OWNER' || user.role === 'PARTNER') && !franchiseId) {
       this.data = null;
       this.error = 'Selecciona una franquicia para ver el reporte.';
@@ -87,18 +88,29 @@ export class ReportSummary implements OnInit {
     this.cdr.markForCheck();
 
     try {
-      const now = new Date();
-      const from = new Date(now);
-      from.setHours(0, 0, 0, 0);
-      const to = new Date(now);
-      to.setHours(23, 59, 59, 999);
+      // ✅ Usa EXACTAMENTE el mismo formato que Postman: [from, to)
+      // Si tu UI tiene fechas seleccionadas, ponlas aquí.
+      // Por ahora: usa HOY (como lo tenías), pero bien armado.
+      const today = new Date();
 
-      const params: any = {
-        from: from.toISOString(),
-        to: to.toISOString(),
+      
+      // 🔹 FECHAS DEL RANGO (aquí es donde van esas líneas)
+      // ✅ usa lo que eligió el usuario; si no eligió, usa hoy
+      const fromPicked = this.fromDate ?? new Date();
+      const toPicked = this.toDate ?? fromPicked;
+
+      // ✅ rango [from, to+1dia) para incluir todo el día "to"
+      const from = this.isoLocalStart(fromPicked);
+      const to = this.isoLocalStart(this.addDays(toPicked, 1));
+
+      const params: Record<string, string> = {
+        from,
+        to,
       };
 
-      if (franchiseId) params.franchiseId = franchiseId;
+      if (franchiseId) params['franchiseId'] = franchiseId;
+      if (this.sellerId) params['sellerId'] = this.sellerId;
+
 
       const res = await firstValueFrom(
         this.http.get<SalesSummaryResponse>(`${this.baseUrl}/sales/summary`, { params })
@@ -106,20 +118,70 @@ export class ReportSummary implements OnInit {
 
       this.data = res ?? null;
     } catch (e: any) {
-      // ✅ NO logout, NO redirect
-      this.error =
-        e?.error?.message ??
-        e?.message ??
-        'No se pudo cargar el resumen';
+      this.error = e?.error?.message ?? e?.message ?? 'No se pudo cargar el resumen';
       this.data = null;
     } finally {
       this.loading = false;
       this.cdr.markForCheck();
     }
-  }
+}
+
 
   public money(cents: number): string {
     const v = (cents ?? 0) / 100;
     return v.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
   }
+  private toYMD(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  private isoLocalStart(d: Date): string {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return this.toIsoWithOffset(x);
+}
+
+private isoLocalEnd(d: Date): string {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return this.toIsoWithOffset(x);
+}
+
+private toIsoWithOffset(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  const ss = pad(date.getSeconds());
+
+  const offsetMin = -date.getTimezoneOffset();
+  const sign = offsetMin >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMin);
+  const offH = pad(Math.floor(abs / 60));
+  const offM = pad(abs % 60);
+
+  return `${y}-${m}-${d}T${hh}:${mm}:${ss}${sign}${offH}:${offM}`;
+}
+
+
+
+private startOfLocalDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+private addDays(d: Date, days: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + days);
+  return x;
+}
+
+
+
 }
